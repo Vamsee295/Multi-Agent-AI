@@ -1,0 +1,24 @@
+TechMart Electronics - User Manual (Account & Devices)
+
+Account Setup
+1. Visit techmart.example and click "Create Account".
+2. Verify your email address before linking devices.
+3. Sign in to the TechMart app (iOS/Android) or web dashboard.
+
+Linking a Device
+1. Open the TechMart app and tap "Add Device".
+2. Put the device in pairing mode (hold the reset button for 5 seconds).
+3. Select your Wi-Fi network and enter the password.
+4. Wait for the green confirmation light — the device appears under "My Devices".
+
+Login Troubleshooting
+- If login fails, reset your password via "Forgot Password" on the sign-in page.
+- Clear browser cache or update the TechMart app to the latest version.
+- Two-factor authentication codes expire after 10 minutes; request a new code if needed.
+
+Sync Issues
+- Ensure the device has a stable Wi-Fi connection (2.4 GHz recommended).
+- Force-sync from the app: Device Settings > Sync Now.
+- If Premium features show as locked after payment, log out and back in to refresh entitlements.
+
+Contact support@techmart.example with your account email and device model if issues persist.

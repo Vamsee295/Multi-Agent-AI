@@ -1,0 +1,27 @@
+TechMart Electronics - Installation Guide
+
+SmartHub Pro Installation
+1. Unbox the hub and connect the power adapter.
+2. Download the TechMart app and create or sign in to your account.
+3. Tap "Add Device" > "SmartHub Pro" and follow on-screen pairing steps.
+4. Place the hub centrally in your home for best device coverage.
+5. Firmware updates install automatically overnight; do not unplug during updates.
+
+CloudCam 360 Installation
+1. Charge the camera fully before first setup (LED solid green when ready).
+2. Mount using the included bracket and screws, or place on a flat surface.
+3. Connect to 2.4 GHz Wi-Fi through the TechMart app.
+4. Adjust motion detection sensitivity under Camera Settings > Motion.
+
+NovaBook Air 14 First Boot
+1. Connect the power adapter and press the power button.
+2. Complete the Windows/macOS setup wizard.
+3. Install TechMart Device Manager from techmart.example/downloads for warranty registration.
+4. Run Windows Update or macOS Software Update before installing third-party apps.
+
+Common Installation Errors
+- Error E-101: Wi-Fi password incorrect — re-enter credentials in the app.
+- Error E-204: Device already registered to another account — factory reset required.
+- Error E-310: Firmware too old — connect device to power and wait 15 minutes for OTA update.
+
+For advanced setup, email support@techmart.example with your order number.

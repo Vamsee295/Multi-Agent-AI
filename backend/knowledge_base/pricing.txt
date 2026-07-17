@@ -1,0 +1,14 @@
+TechMart Electronics - Pricing & Plans
+
+Basic Plan: Free. Includes standard product support and a 12-month warranty.
+
+Premium Plan: $9.99/month. Includes 24-month extended warranty, priority
+support with under-1-hour response time, free express shipping on all
+orders, and early access to new product launches.
+
+Business Plan: $29.99/month. Everything in Premium, plus bulk order
+discounts (10%+ on orders of 10 or more units) and a dedicated account
+manager.
+
+Billing occurs monthly on the signup date. Plan changes take effect at the
+start of the next billing cycle.

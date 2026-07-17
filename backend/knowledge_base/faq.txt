@@ -1,0 +1,13 @@
+TechMart Electronics - Frequently Asked Questions
+
+Q: What are your customer support hours?
+A: Our support team is available Monday to Saturday, 9 AM to 9 PM IST. Email support is monitored 24/7 with a 24-hour response guarantee.
+
+Q: How do I contact support?
+A: You can reach us via live chat on our website, email at support@techmart.example, or phone at 1800-123-4567.
+
+Q: Do you offer international shipping?
+A: Yes, we ship to over 40 countries. International orders take 7-14 business days.
+
+Q: How do I track my order?
+A: Log in to your account and go to "My Orders" to see real-time tracking status for any order placed in the last 12 months.
