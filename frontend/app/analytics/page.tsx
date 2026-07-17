@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Users, Clock, ThumbsUp, AlertTriangle, BarChart2 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
@@ -60,11 +61,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function AnalyticsPage() {
+  const router = useRouter();
   const { user, isInitialized } = useAuth();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [tickets, setTickets] = useState<TicketSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isInitialized && !user) {
+      router.push("/login");
+    }
+  }, [isInitialized, user, router]);
 
   useEffect(() => {
     if (!isInitialized || !user) return;

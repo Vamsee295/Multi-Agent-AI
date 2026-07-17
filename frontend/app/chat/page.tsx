@@ -20,7 +20,7 @@ const SUGGESTED = [
 
 export default function ChatPage() {
   const router = useRouter();
-  const { user, isInitialized: authInit, logout } = useAuth();
+  const { user, isAuthenticated, isInitialized: authInit, logout } = useAuth();
   const {
     messages, sendMessage, isSending, activeAgents, error,
     sessionId, sessions, isLoadingSessions, selectSession,
@@ -33,14 +33,14 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (authInit && !user) router.push("/login");
-  }, [user, authInit, router]);
+    if (authInit && !isAuthenticated) router.push("/login");
+  }, [isAuthenticated, authInit, router]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, activeAgents, isSending]);
 
-  if (!authInit || !user) {
+  if (!authInit || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
