@@ -102,33 +102,78 @@ export default function ChatPage() {
               </span>
             </div>
           </div>
-          <BackendStatus />
+          <div className="flex items-center gap-3">
+            {!isEmpty && (
+              <button
+                onClick={() => {
+                  const content = messages.map(m => `[${m.role.toUpperCase()}]: ${m.content}`).join("\\n\\n");
+                  const blob = new Blob([content], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `chat-export-${sessionId || 'new'}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                className="text-[12px] text-text-muted hover:text-brand px-2 py-1 border border-transparent hover:border-border rounded transition-colors"
+              >
+                Export TXT
+              </button>
+            )}
+            <BackendStatus />
+          </div>
         </header>
 
         {/* Messages */}
         <main className="flex-1 overflow-y-auto">
           {isEmpty ? (
             /* Empty state */
-            <div className="h-full flex flex-col items-center justify-center px-4 py-12">
-              <div className="w-12 h-12 bg-brand-subtle border border-brand/20 rounded-xl flex items-center justify-center mb-4">
-                <MessageSquare size={22} className="text-brand" />
+            <div className="h-full flex flex-col items-center justify-center px-4 py-12 animate-fade-in">
+              <div className="w-14 h-14 bg-gradient-to-br from-brand/20 to-brand-subtle border border-brand/20 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
+                <MessageSquare size={26} className="text-brand" />
               </div>
-              <h2 className="text-[18px] font-semibold text-text-primary mb-1">
-                How can we help you?
+              <h2 className="text-[22px] font-bold text-text-primary mb-2">
+                Welcome to TechMart AI
               </h2>
-              <p className="text-[13px] text-text-muted mb-8 text-center max-w-xs">
-                Ask about billing, technical issues, products, or company policies.
+              <p className="text-[14px] text-text-muted mb-8 text-center max-w-md">
+                Your enterprise-grade support assistant. Powered by a multi-agent routing architecture.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
-                {SUGGESTED.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => { sendMessage(q); }}
-                    className="text-left px-3.5 py-3 bg-white border border-border rounded-md text-[13px] text-text-secondary hover:border-brand/40 hover:text-brand hover:bg-brand-subtle transition-all"
-                  >
-                    {q}
-                  </button>
-                ))}
+              
+              <div className="w-full max-w-2xl mb-8">
+                <div className="text-[12px] font-semibold text-text-muted uppercase tracking-wider mb-3 text-center">
+                  Supported Areas
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {["Products", "Billing", "Technical Support", "Warranty", "Refund", "Shipping"].map((cap) => (
+                    <div key={cap} className="px-3 py-1.5 bg-white border border-border rounded-full text-[12px] font-medium text-text-secondary shadow-sm">
+                      {cap}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="w-full max-w-2xl">
+                <div className="text-[12px] font-semibold text-text-muted uppercase tracking-wider mb-3 text-center">
+                  Suggested Questions
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    "What products do you sell?",
+                    "What is your refund policy?",
+                    "How do I install SmartHub?"
+                  ].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => { sendMessage(q); }}
+                      className="text-left px-4 py-3.5 bg-white border border-border rounded-xl text-[13px] text-text-secondary hover:border-brand/40 hover:text-brand hover:bg-brand-subtle hover:shadow-sm transition-all flex items-center justify-between group"
+                    >
+                      <span>"{q}"</span>
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-brand">→</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
@@ -136,15 +181,6 @@ export default function ChatPage() {
               {messages.map((msg) => (
                 <div key={msg.id} className="flex flex-col">
                   <MessageBubble message={msg} onFeedback={handleFeedback} />
-                  {!isSending &&
-                    msg.role === "assistant" &&
-                    msg.id === messages[messages.length - 1].id &&
-                    msg.retrievedContext && (
-                      <ContextDrawer
-                        context={msg.retrievedContext}
-                        confidence={msg.confidence}
-                      />
-                    )}
                 </div>
               ))}
 

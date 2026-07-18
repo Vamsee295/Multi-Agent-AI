@@ -52,6 +52,8 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(analytics_router)
 app.include_router(tickets_router)
+from api.kb import router as kb_router
+app.include_router(kb_router)
 
 
 @app.get("/api/health", tags=["system"])

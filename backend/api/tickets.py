@@ -29,7 +29,9 @@ async def list_tickets(
         async for doc in cursor:
             tickets.append(
                 TicketSummary(
-                    ticket_id=str(doc["_id"]),
+                    ticket_id=doc.get("ticket_id", str(doc["_id"])),
+                    priority=doc.get("priority", "Medium"),
+                    assigned_team=doc.get("assigned_team", "Customer Success"),
                     session_id=doc["session_id"],
                     trigger_message=doc.get("trigger_message", ""),
                     agents_invoked=doc.get("agents_invoked", []),
@@ -64,7 +66,9 @@ async def resolve_ticket(
         raise HTTPException(status_code=404, detail="Ticket not found")
 
     return TicketSummary(
-        ticket_id=str(result["_id"]),
+        ticket_id=result.get("ticket_id", str(result["_id"])),
+        priority=result.get("priority", "Medium"),
+        assigned_team=result.get("assigned_team", "Customer Success"),
         session_id=result["session_id"],
         trigger_message=result.get("trigger_message", ""),
         agents_invoked=result.get("agents_invoked", []),

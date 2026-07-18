@@ -38,6 +38,8 @@ def new_message_doc(
     }
 
 
+import random
+
 def new_escalation_doc(
     session_id: str,
     user_id: Optional[str],
@@ -45,7 +47,14 @@ def new_escalation_doc(
     agents_invoked: list[str],
     intent_confidence: float,
 ) -> dict:
+    priority = "High" if "complaint" in agents_invoked else "Medium"
+    assigned_team = "Billing Support" if "billing" in agents_invoked else "Technical Support" if "technical" in agents_invoked else "Customer Success"
+    ticket_id = f"TK-{random.randint(1000, 9999)}"
+    
     return {
+        "ticket_id": ticket_id,
+        "priority": priority,
+        "assigned_team": assigned_team,
         "session_id": session_id,
         "user_id": user_id,
         "trigger_message": trigger_message,
@@ -61,9 +70,11 @@ def new_feedback_doc(
     user_id: Optional[str],
     rating: str,
     comment: Optional[str] = None,
+    message_id: Optional[str] = None,
 ) -> dict:
     return {
         "session_id": session_id,
+        "message_id": message_id,
         "user_id": user_id,
         "rating": rating,
         "comment": comment,

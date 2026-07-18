@@ -69,6 +69,24 @@ class MockCollection:
         self.docs.append(copy.deepcopy(doc))
         return MockInsertResult(doc["_id"])
 
+    async def find_one_and_update(self, query, update, return_document=True):
+        doc = await self.find_one(query)
+        if not doc:
+            return None
+        
+        # Apply $set update
+        if "$set" in update:
+            for k, v in update["$set"].items():
+                doc[k] = copy.deepcopy(v)
+                
+        # Update the document inside self.docs list too
+        for idx, d in enumerate(self.docs):
+            if str(d.get("_id")) == str(doc.get("_id")):
+                self.docs[idx] = copy.deepcopy(doc)
+                break
+                
+        return doc
+
     def find(self, query):
         matched = []
         for doc in self.docs:

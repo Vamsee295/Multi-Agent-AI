@@ -47,6 +47,11 @@ export interface ChatResponse {
   intent_confidence: number;
   retrieved_context: RetrievedChunk[];
   escalated: boolean;
+  escalation_details?: {
+    ticket_id: string;
+    priority: string;
+    assigned_team: string;
+  };
   sentiment: SentimentLabel;
   sentiment_score: number;
   response_time_ms: number;

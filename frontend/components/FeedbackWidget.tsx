@@ -37,8 +37,8 @@ export function FeedbackWidget({ onFeedback, selected }: FeedbackWidgetProps) {
         <ThumbsDown size={13} className={selected === "down" ? "fill-red-600" : ""} />
       </button>
       {selected && (
-        <span className="text-[11px] text-text-muted ml-1.5 animate-fade-in">
-          Feedback recorded
+        <span className="text-[11px] text-text-muted ml-1.5 animate-fade-in font-medium">
+          Thanks for your feedback!
         </span>
       )}
     </div>

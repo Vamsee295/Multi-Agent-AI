@@ -21,12 +21,18 @@ export interface ChatMessage {
   content: string;
   agentsInvoked: AgentName[];
   escalated?: boolean;
+  escalationDetails?: {
+    ticket_id: string;
+    priority: string;
+    assigned_team: string;
+  };
   retrievedContext?: ChatResponse["retrieved_context"];
   confidence?: number;
   sentiment?: SentimentLabel;
   sentimentScore?: number;
   responseTimeMs?: number;
   feedback?: "up" | "down";
+  isNew?: boolean;
 }
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -167,11 +173,13 @@ export function useChat({ isLoggedIn, isInitialized }: UseChatOptions) {
           content: response.message,
           agentsInvoked: response.agents_invoked,
           escalated: response.escalated,
+          escalationDetails: response.escalation_details,
           retrievedContext: response.retrieved_context,
           confidence: response.intent_confidence,
           sentiment: response.sentiment,
           sentimentScore: response.sentiment_score,
           responseTimeMs: response.response_time_ms,
+          isNew: true,
         };
         setMessages((prev) => [...prev, assistantMessage]);
 

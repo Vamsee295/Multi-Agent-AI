@@ -54,6 +54,7 @@ class ChatResponse(BaseModel):
     intent_confidence: float
     retrieved_context: list[RetrievedChunk]
     escalated: bool
+    escalation_details: Optional[dict] = None
     sentiment: SentimentLabel = "neutral"
     sentiment_score: float = 0.5
     response_time_ms: int = 0
@@ -82,14 +83,23 @@ class SessionSummary(BaseModel):
 
 # ---------- Feedback ----------
 class FeedbackRequest(BaseModel):
+    message_id: Optional[str] = None
     rating: Literal["up", "down"]
     comment: Optional[str] = Field(default=None, max_length=500)
 
 
 class FeedbackResponse(BaseModel):
     session_id: str
+    message_id: Optional[str]
     rating: str
     created_at: datetime
+
+
+# ---------- Knowledge Base ----------
+class KBFileInfo(BaseModel):
+    filename: str
+    size_bytes: int
+    modified_at: datetime
 
 
 # ---------- Analytics ----------
@@ -103,6 +113,10 @@ class AnalyticsSummary(BaseModel):
     total_conversations: int
     total_messages: int
     avg_response_time_ms: float
+    avg_retrieval_time_ms: float = 0.0
+    most_used_agent: str = "N/A"
+    total_kb_documents: int = 0
+    avg_chunks_retrieved: float = 0.0
     satisfaction_score: float        # 0.0–1.0 based on thumbs up %
     escalation_count: int
     open_ticket_count: int
@@ -112,6 +126,8 @@ class AnalyticsSummary(BaseModel):
 # ---------- Tickets ----------
 class TicketSummary(BaseModel):
     ticket_id: str
+    priority: str = "Medium"
+    assigned_team: str = "Customer Success"
     session_id: str
     trigger_message: str
     agents_invoked: list[str]

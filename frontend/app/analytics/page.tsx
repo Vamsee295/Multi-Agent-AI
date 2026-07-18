@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Clock, ThumbsUp, AlertTriangle, BarChart2 } from "lucide-react";
+import { ArrowLeft, Users, Clock, ThumbsUp, AlertTriangle, BarChart2, MessageSquare } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
   ResponsiveContainer, Cell,
@@ -123,31 +123,56 @@ export default function AnalyticsPage() {
 
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
 
-        {/* KPI row */}
+        {/* KPI grid */}
         {summary && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <KpiCard
-              title="Total Conversations"
+              title="Conversations"
               value={summary.total_conversations}
               icon={<Users size={16} className="text-text-muted" />}
             />
             <KpiCard
-              title="Avg Response Time"
-              value={`${summary.avg_response_time_ms.toFixed(0)} ms`}
-              icon={<Clock size={16} className="text-text-muted" />}
-              sub={summary.avg_response_time_ms < 2000 ? "Within target" : "Above target"}
+              title="Total Messages"
+              value={summary.total_messages}
+              icon={<MessageSquare size={16} className="text-text-muted" />}
             />
             <KpiCard
-              title="Satisfaction Score"
+              title="Satisfaction"
               value={`${(summary.satisfaction_score * 100).toFixed(0)}%`}
               icon={<ThumbsUp size={16} className="text-emerald-600" />}
             />
             <KpiCard
-              title="Open Escalations"
+              title="Avg Response Time"
+              value={`${summary.avg_response_time_ms.toFixed(0)}ms`}
+              icon={<Clock size={16} className="text-text-muted" />}
+              sub={summary.avg_response_time_ms < 2000 ? "Within target" : "Above target"}
+            />
+            <KpiCard
+              title="Escalations"
               value={summary.open_ticket_count}
               icon={<AlertTriangle size={16} className={summary.open_ticket_count > 0 ? "text-orange-500" : "text-text-muted"} />}
               alert={summary.open_ticket_count > 0}
               sub={summary.open_ticket_count > 0 ? "Requires attention" : "All clear"}
+            />
+            <KpiCard
+              title="Top Agent"
+              value={summary.most_used_agent === "N/A" ? "N/A" : summary.most_used_agent.charAt(0).toUpperCase() + summary.most_used_agent.slice(1)}
+              icon={<BarChart2 size={16} className="text-brand" />}
+            />
+            <KpiCard
+              title="KB Documents"
+              value={summary.total_kb_documents}
+              icon={<Users size={16} className="text-text-muted" />}
+            />
+            <KpiCard
+              title="Avg Retrieval Time"
+              value={`${summary.avg_retrieval_time_ms.toFixed(1)}ms`}
+              icon={<Clock size={16} className="text-text-muted" />}
+            />
+            <KpiCard
+              title="Avg Retrieved Chunks"
+              value={summary.avg_chunks_retrieved.toFixed(1)}
+              icon={<Users size={16} className="text-text-muted" />}
             />
           </div>
         )}

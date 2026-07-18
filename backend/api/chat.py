@@ -170,16 +170,21 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
         )
     )
 
+    escalation_details = None
     if routed.escalated:
-        await db.escalations.insert_one(
-            new_escalation_doc(
-                session_id=session_id,
-                user_id=user_id,
-                trigger_message=payload.message,
-                agents_invoked=routed.agents_invoked,
-                intent_confidence=routed.intent_confidence,
-            )
+        escalation_doc = new_escalation_doc(
+            session_id=session_id,
+            user_id=user_id,
+            trigger_message=payload.message,
+            agents_invoked=routed.agents_invoked,
+            intent_confidence=routed.intent_confidence,
         )
+        await db.escalations.insert_one(escalation_doc)
+        escalation_details = {
+            "ticket_id": escalation_doc["ticket_id"],
+            "priority": escalation_doc["priority"],
+            "assigned_team": escalation_doc["assigned_team"],
+        }
 
     # Auto-generate a session title from the first user message
     try:
@@ -201,8 +206,12 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
         message=routed.final_message,
         agents_invoked=routed.agents_invoked,
         intent_confidence=routed.intent_confidence,
-        retrieved_context=[RetrievedChunk(**c) for c in routed.retrieved_context],
+        retrieved_context=[
+            RetrievedChunk(source=c["source"], text=c["text"], score=c.get("score", 0.0))
+            for c in routed.retrieved_context
+        ],
         escalated=routed.escalated,
+        escalation_details=escalation_details,
         sentiment=routed.sentiment,
         sentiment_score=routed.sentiment_score,
         response_time_ms=routed.response_time_ms,
@@ -305,10 +314,17 @@ async def submit_feedback(
 ):
     db = get_db()
     await db.feedback.insert_one(
-        new_feedback_doc(session_id, user_id, payload.rating, payload.comment)
+        new_feedback_doc(
+            session_id=session_id,
+            user_id=user_id,
+            rating=payload.rating,
+            comment=payload.comment,
+            message_id=payload.message_id,
+        )
     )
     return FeedbackResponse(
         session_id=session_id,
+        message_id=payload.message_id,
         rating=payload.rating,
         created_at=datetime.now(timezone.utc),
     )
