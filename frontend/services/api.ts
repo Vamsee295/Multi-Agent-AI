@@ -99,6 +99,10 @@ export interface AnalyticsSummary {
   total_conversations: number;
   total_messages: number;
   avg_response_time_ms: number;
+  avg_retrieval_time_ms: number;
+  most_used_agent: string;
+  total_kb_documents: number;
+  avg_chunks_retrieved: number;
   satisfaction_score: number;
   escalation_count: number;
   open_ticket_count: number;
