@@ -9,14 +9,6 @@ import { Sidebar } from "@/components/Sidebar";
 import { MessageBubble } from "@/components/MessageBubble";
 import { AgentPulseStrip } from "@/components/AgentPulseStrip";
 import { BackendStatus } from "@/components/BackendStatus";
-import { ContextDrawer } from "@/components/ContextDrawer";
-
-const SUGGESTED = [
-  "What is your refund policy?",
-  "I was charged twice this month.",
-  "How do I reset my password?",
-  "Do you offer international shipping?",
-];
 
 export default function ChatPage() {
   const router = useRouter();
@@ -43,7 +35,7 @@ export default function ChatPage() {
   if (!authInit || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-[#09090B] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -87,17 +79,17 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Top bar */}
-        <header className="h-14 shrink-0 flex items-center justify-between px-4 bg-white border-b border-border">
+        <header className="h-14 shrink-0 flex items-center justify-between px-4 bg-white border-b border-[#E4E4E7]">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-1.5 -ml-1.5 rounded text-text-muted hover:text-text-primary hover:bg-muted transition-colors md:hidden"
+              className="p-1.5 -ml-1.5 rounded text-text-muted hover:text-text-primary hover:bg-[#F4F4F5] transition-colors md:hidden"
             >
               <Menu size={18} />
             </button>
             <div className="flex items-center gap-2">
-              <MessageSquare size={16} className="text-brand" />
-              <span className="text-[14px] font-semibold text-text-primary">
+              <MessageSquare size={16} className="text-[#09090B]" />
+              <span className="text-[14px] font-bold text-[#09090B]">
                 {sessionId ? "Conversation" : "New Conversation"}
               </span>
             </div>
@@ -106,7 +98,7 @@ export default function ChatPage() {
             {!isEmpty && (
               <button
                 onClick={() => {
-                  const content = messages.map(m => `[${m.role.toUpperCase()}]: ${m.content}`).join("\\n\\n");
+                  const content = messages.map(m => `[${m.role.toUpperCase()}]: ${m.content}`).join("\n\n");
                   const blob = new Blob([content], { type: 'text/plain' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
@@ -117,7 +109,7 @@ export default function ChatPage() {
                   document.body.removeChild(a);
                   URL.revokeObjectURL(url);
                 }}
-                className="text-[12px] text-text-muted hover:text-brand px-2 py-1 border border-transparent hover:border-border rounded transition-colors"
+                className="text-[12px] text-text-muted hover:text-[#09090B] px-2 py-1 border border-transparent hover:border-[#E4E4E7] rounded transition-colors"
               >
                 Export TXT
               </button>
@@ -131,23 +123,23 @@ export default function ChatPage() {
           {isEmpty ? (
             /* Empty state */
             <div className="h-full flex flex-col items-center justify-center px-4 py-12 animate-fade-in">
-              <div className="w-14 h-14 bg-gradient-to-br from-brand/20 to-brand-subtle border border-brand/20 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
-                <MessageSquare size={26} className="text-brand" />
+              <div className="w-14 h-14 bg-[#09090B] rounded-2xl flex items-center justify-center mb-5 shadow-sm">
+                <MessageSquare size={26} className="text-white" />
               </div>
               <h2 className="text-[22px] font-bold text-text-primary mb-2">
-                Welcome to TechMart AI
+                Welcome to Multi-Agent AI
               </h2>
-              <p className="text-[14px] text-text-muted mb-8 text-center max-w-md">
+              <p className="text-[14px] text-text-muted mb-8 text-center max-w-md font-medium">
                 Your enterprise-grade support assistant. Powered by a multi-agent routing architecture.
               </p>
               
               <div className="w-full max-w-2xl mb-8">
-                <div className="text-[12px] font-semibold text-text-muted uppercase tracking-wider mb-3 text-center">
+                <div className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-3 text-center">
                   Supported Areas
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
                   {["Products", "Billing", "Technical Support", "Warranty", "Refund", "Shipping"].map((cap) => (
-                    <div key={cap} className="px-3 py-1.5 bg-white border border-border rounded-full text-[12px] font-medium text-text-secondary shadow-sm">
+                    <div key={cap} className="px-3.5 py-1.5 bg-white border border-[#E4E4E7] rounded-full text-[12px] font-semibold text-[#09090B] shadow-sm">
                       {cap}
                     </div>
                   ))}
@@ -155,7 +147,7 @@ export default function ChatPage() {
               </div>
 
               <div className="w-full max-w-2xl">
-                <div className="text-[12px] font-semibold text-text-muted uppercase tracking-wider mb-3 text-center">
+                <div className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-3 text-center">
                   Suggested Questions
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -167,10 +159,10 @@ export default function ChatPage() {
                     <button
                       key={q}
                       onClick={() => { sendMessage(q); }}
-                      className="text-left px-4 py-3.5 bg-white border border-border rounded-xl text-[13px] text-text-secondary hover:border-brand/40 hover:text-brand hover:bg-brand-subtle hover:shadow-sm transition-all flex items-center justify-between group"
+                      className="text-left px-4 py-3.5 bg-white border border-[#E4E4E7] rounded-xl text-[13px] text-[#09090B] font-medium hover:border-[#09090B] hover:bg-[#F4F4F5] hover:shadow-sm transition-all flex items-center justify-between group"
                     >
                       <span>"{q}"</span>
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-brand">→</span>
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[#09090B] font-bold">→</span>
                     </button>
                   ))}
                 </div>
@@ -201,7 +193,7 @@ export default function ChatPage() {
         </main>
 
         {/* Input bar */}
-        <footer className="shrink-0 border-t border-border bg-white px-4 py-3">
+        <footer className="shrink-0 border-t border-[#E4E4E7] bg-white px-4 py-3">
           <div className="max-w-3xl mx-auto">
             {error && (
               <div className="flex items-center justify-between mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-[12px] text-red-700">
@@ -211,7 +203,7 @@ export default function ChatPage() {
                 </button>
               </div>
             )}
-            <div className="flex items-end gap-2 border border-border rounded-md bg-white focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/20 transition-all">
+            <div className="flex items-end gap-2 border border-[#E4E4E7] rounded-xl bg-white focus-within:border-[#09090B] focus-within:ring-2 focus-within:ring-black/5 transition-all">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -225,7 +217,7 @@ export default function ChatPage() {
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isSending}
-                className="m-2 p-2 bg-brand hover:bg-brand-dark text-white rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                className="m-2 p-2 bg-[#09090B] hover:bg-[#27272A] text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
               >
                 <Send size={16} />
               </button>

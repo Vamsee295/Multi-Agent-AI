@@ -125,3 +125,45 @@ body {
 }
 
 .status-dot-live { animation: statusPulse 2s ease-in-out infinite; }
+
+/* ── AI Command Center Login Styles ────────────────────────────────────── */
+.ai-bg-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+}
+
+.ai-ambient-glow {
+  background: radial-gradient(circle at center, rgba(37, 99, 235, 0.15) 0%, transparent 60%);
+}
+
+@keyframes corePulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.4), 0 0 30px rgba(37, 99, 235, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(37, 99, 235, 0.6), 0 0 50px rgba(37, 99, 235, 0.3); }
+}
+
+.core-glow {
+  animation: corePulse 4s ease-in-out infinite;
+}
+
+@keyframes nodeOrbit {
+  0% { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
+}
+
+@keyframes slowOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pipelineFlow {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.pipeline-track {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(37,99,235,0.4) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: pipelineFlow 3s linear infinite;
+}

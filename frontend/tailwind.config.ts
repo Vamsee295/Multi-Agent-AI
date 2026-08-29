@@ -12,12 +12,12 @@ const config: Config = {
         border:  "#E5E7EB",       // subtle dividers
         muted:   "#F3F4F6",       // muted backgrounds
 
-        // ── Brand (corporate blue) ────────────────────────────────
+        // ── Brand (modern monochrome) ────────────────────────────
         brand: {
-          DEFAULT: "#2563EB",
-          dark:    "#1D4ED8",
-          light:   "#3B82F6",
-          subtle:  "#EFF6FF",
+          DEFAULT: "#09090B",
+          dark:    "#27272A",
+          light:   "#3F3F46",
+          subtle:  "#F4F4F5",
         },
 
         // ── Text ─────────────────────────────────────────────────
@@ -29,11 +29,11 @@ const config: Config = {
 
         // ── Agent colours (light-mode) ────────────────────────────
         agent: {
-          billing:   { bg: "#EFF6FF", fg: "#1D4ED8", dot: "#2563EB", ring: "rgba(37,99,235,0.15)" },
-          technical: { bg: "#F5F3FF", fg: "#5B21B6", dot: "#7C3AED", ring: "rgba(124,58,237,0.15)" },
-          product:   { bg: "#FFFBEB", fg: "#92400E", dot: "#D97706", ring: "rgba(217,119,6,0.15)" },
+          billing:   { bg: "#F4F4F5", fg: "#09090B", dot: "#09090B", ring: "rgba(9,9,11,0.15)" },
+          technical: { bg: "#F4F4F5", fg: "#09090B", dot: "#09090B", ring: "rgba(9,9,11,0.15)" },
+          product:   { bg: "#F4F4F5", fg: "#09090B", dot: "#09090B", ring: "rgba(9,9,11,0.15)" },
           complaint: { bg: "#FEF2F2", fg: "#991B1B", dot: "#DC2626", ring: "rgba(220,38,38,0.15)" },
-          faq:       { bg: "#ECFDF5", fg: "#065F46", dot: "#059669", ring: "rgba(5,150,105,0.15)" },
+          faq:       { bg: "#F4F4F5", fg: "#09090B", dot: "#09090B", ring: "rgba(9,9,11,0.15)" },
         },
 
         // ── Sentiment colours (light-mode) ────────────────────────
@@ -65,7 +65,7 @@ const config: Config = {
         card:   "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)",
         "card-md": "0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04)",
         "card-lg": "0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.04)",
-        focus:  "0 0 0 3px rgba(37,99,235,0.15)",
+        focus:  "0 0 0 3px rgba(9,9,11,0.15)",
       },
 
       animation: {
