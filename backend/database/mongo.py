@@ -1,18 +1,46 @@
 """
 Async MongoDB connection (Motor) with lazy singleton client.
-Falls back gracefully with a clear error if MongoDB is unreachable.
+Falls back gracefully with persistent local file-backed Mock Database
+so user accounts and chat sessions are NEVER lost on server reload.
 """
+import os
+import json
+import copy
+from datetime import datetime, timezone
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from config import get_settings
-
-from datetime import datetime
-from bson import ObjectId
-import copy
 
 _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
 _use_mock_db: bool = False
 _mock_db = None
+
+DB_CACHE_FILE = os.path.join(os.path.dirname(__file__), ".mock_db_store.json")
+
+
+def _json_serial(obj):
+    if isinstance(obj, (datetime,)):
+        return obj.isoformat()
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+
+def _deserialize_doc(doc: dict) -> dict:
+    d = copy.deepcopy(doc)
+    if "_id" in d and isinstance(d["_id"], str):
+        try:
+            d["_id"] = ObjectId(d["_id"])
+        except Exception:
+            pass
+    for k, v in d.items():
+        if isinstance(v, str) and (k.endswith("_at") or k == "timestamp"):
+            try:
+                d[k] = datetime.fromisoformat(v)
+            except Exception:
+                pass
+    return d
 
 
 class MockInsertResult:
@@ -26,7 +54,11 @@ class MockCursor:
         self._index = 0
 
     def sort(self, key, direction=1):
-        self.data = sorted(self.data, key=lambda x: x.get(key) if x.get(key) is not None else datetime.min)
+        self.data = sorted(
+            self.data,
+            key=lambda x: x.get(key) if x.get(key) is not None else datetime.min,
+            reverse=(direction == -1)
+        )
         return self
 
     def __aiter__(self):
@@ -41,11 +73,12 @@ class MockCursor:
 
 
 class MockCollection:
-    def __init__(self, name):
+    def __init__(self, name, parent_db):
         self.name = name
+        self.parent_db = parent_db
         self.docs = []
 
-    async def create_index(self, key, unique=False):
+    async def create_index(self, key, unique=False, **kwargs):
         pass
 
     async def find_one(self, query):
@@ -60,13 +93,14 @@ class MockCollection:
                     match = False
                     break
             if match:
-                return doc
+                return copy.deepcopy(doc)
         return None
 
     async def insert_one(self, doc):
         if "_id" not in doc:
             doc["_id"] = ObjectId()
         self.docs.append(copy.deepcopy(doc))
+        self.parent_db.save()
         return MockInsertResult(doc["_id"])
 
     async def find_one_and_update(self, query, update, return_document=True):
@@ -85,6 +119,7 @@ class MockCollection:
                 self.docs[idx] = copy.deepcopy(doc)
                 break
                 
+        self.parent_db.save()
         return doc
 
     def find(self, query):
@@ -92,11 +127,15 @@ class MockCollection:
         for doc in self.docs:
             match = True
             for k, v in query.items():
-                if doc.get(k) != v:
+                if k == "_id":
+                    if str(doc.get("_id")) != str(v):
+                        match = False
+                        break
+                elif doc.get(k) != v:
                     match = False
                     break
             if match:
-                matched.append(doc)
+                matched.append(copy.deepcopy(doc))
         return MockCursor(matched)
 
     def aggregate(self, pipeline):
@@ -108,7 +147,11 @@ class MockCollection:
                 for doc in docs:
                     match = True
                     for k, v in match_query.items():
-                        if doc.get(k) != v:
+                        if k == "_id":
+                            if str(doc.get("_id")) != str(v):
+                                match = False
+                                break
+                        elif doc.get(k) != v:
                             match = False
                             break
                     if match:
@@ -117,12 +160,10 @@ class MockCollection:
             elif "$sort" in stage:
                 sort_config = stage["$sort"]
                 for field, order in reversed(list(sort_config.items())):
-                    # Use default-arg capture to avoid late-binding closure bug
                     def make_sort_key(f):
                         def _key(x):
                             val = x.get(f)
                             if val is None:
-                                # Return a sentinel that is always less-than any real value
                                 return (0, datetime.min, "")
                             if isinstance(val, datetime):
                                 return (1, val, "")
@@ -194,24 +235,84 @@ class MockCollection:
 
 class MockDatabase:
     def __init__(self):
-        self.users = MockCollection("users")
-        self.messages = MockCollection("messages")
-        self.escalations = MockCollection("escalations")
-        self.feedback = MockCollection("feedback")
-        self.session_titles = MockCollection("session_titles")
+        self.users = MockCollection("users", self)
+        self.messages = MockCollection("messages", self)
+        self.escalations = MockCollection("escalations", self)
+        self.feedback = MockCollection("feedback", self)
+        self.session_titles = MockCollection("session_titles", self)
+        self.load()
+
+    def save(self):
+        try:
+            data = {
+                "users": self.users.docs,
+                "messages": self.messages.docs,
+                "escalations": self.escalations.docs,
+                "feedback": self.feedback.docs,
+                "session_titles": self.session_titles.docs,
+            }
+            with open(DB_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, default=_json_serial, indent=2)
+        except Exception as e:
+            print(f"[MockDB] Warning: Failed to save cache: {e}")
+
+    def load(self):
+        if os.path.exists(DB_CACHE_FILE):
+            try:
+                with open(DB_CACHE_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.users.docs = [_deserialize_doc(d) for d in data.get("users", [])]
+                self.messages.docs = [_deserialize_doc(d) for d in data.get("messages", [])]
+                self.escalations.docs = [_deserialize_doc(d) for d in data.get("escalations", [])]
+                self.feedback.docs = [_deserialize_doc(d) for d in data.get("feedback", [])]
+                self.session_titles.docs = [_deserialize_doc(d) for d in data.get("session_titles", [])]
+            except Exception as e:
+                print(f"[MockDB] Warning: Failed to load cache: {e}")
+        
+        # Ensure default seed accounts always exist
+        self._ensure_seed_users()
+
+    def _ensure_seed_users(self):
+        default_pwd_hash = "legacy_seed_hash_not_used"
+        
+        seed_accounts = [
+            {"email": "student@gmail.com", "name": "Student User"},
+            {"email": "demo@techmart.com", "name": "Demo User"},
+            {"email": "admin@techmart.com", "name": "Admin User"},
+            {"email": "you@company.com", "name": "Test User"},
+            {"email": "test@company.com", "name": "Test User"},
+        ]
+        
+        existing_emails = {u.get("email") for u in self.users.docs}
+        changed = False
+        for acc in seed_accounts:
+            if acc["email"] not in existing_emails:
+                self.users.docs.append({
+                    "_id": ObjectId(),
+                    "email": acc["email"],
+                    "name": acc["name"],
+                    "hashed_password": default_pwd_hash,
+                    "created_at": datetime.now(timezone.utc),
+                    "is_active": True,
+                })
+                changed = True
+        if changed:
+            self.save()
 
 
 def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
         settings = get_settings()
-        _client = AsyncIOMotorClient(settings.MONGO_URI, serverSelectionTimeoutMS=5000)
+        _client = AsyncIOMotorClient(settings.MONGO_URI, serverSelectionTimeoutMS=2000)
     return _client
 
 
 def get_db():
-    global _db
+    global _db, _use_mock_db, _mock_db
     if _use_mock_db:
+        if _mock_db is None:
+            _mock_db = MockDatabase()
         return _mock_db
     if _db is None:
         settings = get_settings()
@@ -227,7 +328,7 @@ async def ping() -> bool:
         return True
     except Exception:
         import sys
-        print("\n=== WARNING: MongoDB is unreachable. Falling back to In-Memory Mock Database. ===\n", file=sys.stderr)
+        print("\n=== [DATABASE] MongoDB offline. Active with Persistent File Storage (.mock_db_store.json) ===\n", file=sys.stderr)
         _use_mock_db = True
         if _mock_db is None:
             _mock_db = MockDatabase()
@@ -237,6 +338,7 @@ async def ping() -> bool:
 async def ensure_indexes() -> None:
     db = get_db()
     await db.users.create_index("email", unique=True)
+    await db.users.create_index("supabase_uid", unique=True, sparse=True)
     await db.messages.create_index("session_id")
     await db.messages.create_index([("user_id", 1), ("timestamp", -1)])
     await db.escalations.create_index("session_id")

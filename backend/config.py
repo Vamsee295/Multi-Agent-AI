@@ -13,10 +13,15 @@ class Settings(BaseSettings):
     ENV: str = os.getenv("ENV", "development")
     DEBUG: bool = ENV != "production"
 
-    # Auth
+    # Auth (Legacy JWT)
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24h
+
+    # Supabase Auth
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
+    SUPABASE_AUDIENCE: str = os.getenv("SUPABASE_AUDIENCE", "authenticated")
 
     # Database
     MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017")

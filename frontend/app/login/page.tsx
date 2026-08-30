@@ -9,19 +9,22 @@ import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, error: authError, setError: setAuthError } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   
-  const [error, setError] = useState("");
+  const [localError, setLocalError] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
+
+  const displayError = localError || authError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setLocalError("");
+    setAuthError(null);
     setStatus("loading");
     
     try {
@@ -33,10 +36,9 @@ export default function LoginPage() {
         }, 600);
       } else {
         setStatus("idle");
-        setError("Invalid email or password.");
       }
     } catch (err: any) {
-      setError(err.message || "Authentication failed.");
+      setLocalError(err.message || "Authentication failed. Please try again.");
       setStatus("idle");
     }
   };
@@ -72,10 +74,10 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {error && (
+          {displayError && (
             <div className="mb-6 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-[14px] text-red-700 flex items-start">
               <span className="shrink-0 mt-0.5 mr-2">⚠</span>
-              <span>{error}</span>
+              <span>{displayError}</span>
             </div>
           )}
 

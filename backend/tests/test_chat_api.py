@@ -1,11 +1,12 @@
+import uuid
+from datetime import datetime, timezone
 import pytest
 from httpx import ASGITransport, AsyncClient
 from bson import ObjectId
-from datetime import datetime, timezone
 
 from main import app
 from database import mongo as mongo_module
-from auth.security import create_access_token
+from tests.test_auth_supabase import make_mock_supabase_token
 
 
 @pytest.fixture(autouse=True)
@@ -16,18 +17,19 @@ async def reset_mock_db():
 
 
 def _seed_user(email: str = "owner@example.com") -> tuple[str, str]:
-    user_id = ObjectId()
+    user_id = str(uuid.uuid4())
     mongo_module._mock_db.users.docs.append(
         {
-            "_id": user_id,
+            "_id": ObjectId(),
+            "supabase_uid": user_id,
             "name": "Test User",
             "email": email,
-            "hashed_password": "stub",
+            "role": "user",
             "created_at": datetime.now(timezone.utc),
         }
     )
-    token = create_access_token(str(user_id))
-    return str(user_id), token
+    token = make_mock_supabase_token(user_id=user_id, email=email)
+    return user_id, token
 
 
 @pytest.mark.asyncio

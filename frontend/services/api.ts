@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import { supabase } from "@/lib/supabase/client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -8,10 +9,16 @@ export const api = axios.create({
   timeout: 60_000,
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   if (typeof window !== "undefined") {
-    const token = window.localStorage.getItem("access_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        config.headers.Authorization = `Bearer ${session.access_token}`;
+      }
+    } catch (err) {
+      console.warn("Could not retrieve active Supabase session for request:", err);
+    }
   }
   return config;
 });
@@ -123,16 +130,6 @@ export interface TicketSummary {
 export async function checkHealth(): Promise<HealthResponse> {
   const { data } = await api.get("/api/health");
   return data;
-}
-
-export async function registerUser(name: string, email: string, password: string) {
-  const { data } = await api.post("/api/auth/register", { name, email, password });
-  return data as UserPublic;
-}
-
-export async function loginUser(email: string, password: string) {
-  const { data } = await api.post("/api/auth/login", { email, password });
-  return data as { access_token: string; token_type: string; expires_in_minutes: number };
 }
 
 export async function fetchMe(): Promise<UserPublic> {

@@ -6,11 +6,22 @@ from typing import Optional
 from bson import ObjectId
 
 
-def new_user_doc(name: str, email: str, hashed_password: str) -> dict:
+def new_user_doc(name: str, email: str, hashed_password: str, role: str = "user") -> dict:
     return {
         "name": name,
         "email": email.lower(),
         "hashed_password": hashed_password,
+        "role": role,
+        "created_at": datetime.now(timezone.utc),
+    }
+
+
+def new_supabase_user_doc(supabase_uid: str, email: str, name: str, role: str = "user") -> dict:
+    return {
+        "supabase_uid": supabase_uid,
+        "name": name,
+        "email": email.lower(),
+        "role": role,
         "created_at": datetime.now(timezone.utc),
     }
 

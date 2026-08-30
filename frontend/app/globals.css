@@ -10,16 +10,23 @@
 }
 
 /* ── Base ──────────────────────────────────────────────────────────────── */
-html {
+html, body {
   color-scheme: light;
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
 }
 
 body {
-  background: #F8FAFC;
-  color: #111827;
+  background: #FFFFFF;
+  color: #09090B;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: "Inter", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 /* ── Enterprise card utility ───────────────────────────────────────────── */
@@ -33,8 +40,8 @@ body {
 /* ── Focus ring ────────────────────────────────────────────────────────── */
 .input-focus:focus {
   outline: none;
-  border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: #09090B;
+  box-shadow: 0 0 0 3px rgba(9, 9, 11, 0.12);
 }
 
 /* ── Scrollbars ────────────────────────────────────────────────────────── */
@@ -74,13 +81,13 @@ body {
 .prose-chat strong      { font-weight: 600; color: #111827; }
 .prose-chat em          { font-style: italic; color: #374151; }
 .prose-chat code        {
-  background: #EFF6FF;
-  color: #1D4ED8;
+  background: #F4F4F5;
+  color: #09090B;
   padding: 0.1em 0.35em;
   border-radius: 4px;
   font-size: 0.82em;
   font-family: var(--font-mono);
-  border: 1px solid #DBEAFE;
+  border: 1px solid #E4E4E7;
 }
 .prose-chat pre {
   background: #F8FAFC;
@@ -96,12 +103,12 @@ body {
   padding: 0;
   color: #374151;
 }
-.prose-chat a           { color: #2563EB; text-decoration: underline; }
+.prose-chat a           { color: #09090B; text-decoration: underline; }
 .prose-chat h1,
 .prose-chat h2,
 .prose-chat h3          { font-weight: 600; color: #111827; margin: 0.6em 0 0.25em; }
 .prose-chat blockquote  {
-  border-left: 3px solid #2563EB;
+  border-left: 3px solid #09090B;
   padding-left: 0.75em;
   color: #6B7280;
   margin: 0.5em 0;
@@ -132,38 +139,4 @@ body {
   background-image: 
     linear-gradient(to right, rgba(255, 255, 255, 0.01) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
-}
-
-.ai-ambient-glow {
-  background: radial-gradient(circle at center, rgba(37, 99, 235, 0.15) 0%, transparent 60%);
-}
-
-@keyframes corePulse {
-  0%, 100% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.4), 0 0 30px rgba(37, 99, 235, 0.2); }
-  50% { box-shadow: 0 0 25px rgba(37, 99, 235, 0.6), 0 0 50px rgba(37, 99, 235, 0.3); }
-}
-
-.core-glow {
-  animation: corePulse 4s ease-in-out infinite;
-}
-
-@keyframes nodeOrbit {
-  0% { transform: rotate(0deg) translateX(40px) rotate(0deg); }
-  100% { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
-}
-
-@keyframes slowOrbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pipelineFlow {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.pipeline-track {
-  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(37,99,235,0.4) 50%, rgba(255,255,255,0.05) 75%);
-  background-size: 200% 100%;
-  animation: pipelineFlow 3s linear infinite;
 }

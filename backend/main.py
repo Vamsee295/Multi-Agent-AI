@@ -56,6 +56,7 @@ from api.kb import router as kb_router
 app.include_router(kb_router)
 
 
+@app.get("/health", tags=["system"])
 @app.get("/api/health", tags=["system"])
 async def health():
     db_ok = await ping()
