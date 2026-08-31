@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Eye, EyeOff, LayoutGrid, ArrowRight } from "lucide-react";
+import { Mail, Eye, EyeOff, LayoutGrid, ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   
   const [localError, setLocalError] = useState("");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
 
   const displayError = localError || authError;
@@ -24,23 +25,34 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError("");
+    setErrorCode(null);
     setAuthError(null);
     setStatus("loading");
     
     try {
-      const success = await login(email, password);
-      if (success) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const result = await login(normalizedEmail, password);
+      if (result.success) {
         setStatus("success");
         setTimeout(() => {
           router.push("/chat");
         }, 600);
       } else {
+        setErrorCode(result.code || "UNKNOWN");
+        setLocalError(result.error || "Invalid email or password. Please try again.");
         setStatus("idle");
       }
     } catch (err: any) {
       setLocalError(err.message || "Authentication failed. Please try again.");
       setStatus("idle");
     }
+  };
+
+  const handleGoToVerify = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("verify_email_target", email.trim().toLowerCase());
+    }
+    router.push("/verify-email");
   };
 
   return (
@@ -54,7 +66,13 @@ export default function LoginPage() {
         
         {/* Mobile Header (Hidden on lg screens) */}
         <div className="lg:hidden w-full max-w-[400px] flex flex-col mb-12 relative">
-          <div className="flex items-center gap-2 mb-6 text-text-primary font-bold tracking-tight text-[16px]">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-[13px] font-medium text-[#71717A] hover:text-[#09090B] transition-colors mb-6"
+          >
+            <ArrowLeft size={14} /> Back to home
+          </Link>
+          <div className="flex items-center gap-2 text-text-primary font-bold tracking-tight text-[16px]">
             <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
               <LayoutGrid size={14} className="text-white" />
             </div>
@@ -74,12 +92,50 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {displayError && (
+          {/* Structured Error Banners */}
+          {errorCode === "EMAIL_NOT_VERIFIED" ? (
+            <div className="mb-6 px-4 py-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-[14px] text-amber-900 flex flex-col gap-2">
+              <div className="flex items-start">
+                <span className="shrink-0 mt-0.5 mr-2 text-amber-600">⚠</span>
+                <div>
+                  <p className="font-semibold text-amber-950">Email not verified</p>
+                  <p className="text-[13px] text-amber-800/90 mt-0.5">Please verify your email before signing in.</p>
+                </div>
+              </div>
+              <div className="pl-6 pt-0.5">
+                <button
+                  type="button"
+                  onClick={handleGoToVerify}
+                  className="inline-flex items-center gap-1 text-[13px] font-bold text-[#09090B] hover:underline"
+                >
+                  Verify email <ArrowRight size={13} />
+                </button>
+              </div>
+            </div>
+          ) : errorCode === "EMAIL_NOT_FOUND" ? (
+            <div className="mb-6 px-4 py-3.5 bg-red-50 border border-red-100 rounded-xl text-[14px] text-red-900 flex flex-col gap-2">
+              <div className="flex items-start">
+                <span className="shrink-0 mt-0.5 mr-2 text-red-600">⚠</span>
+                <div>
+                  <p className="font-semibold text-red-950">Email not found</p>
+                  <p className="text-[13px] text-red-700/90 mt-0.5">We couldn&apos;t find an account with this email address.</p>
+                </div>
+              </div>
+              <div className="pl-6 pt-0.5">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center gap-1 text-[13px] font-bold text-red-900 hover:underline"
+                >
+                  Sign up for free <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
+          ) : displayError ? (
             <div className="mb-6 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-[14px] text-red-700 flex items-start">
               <span className="shrink-0 mt-0.5 mr-2">⚠</span>
               <span>{displayError}</span>
             </div>
-          )}
+          ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
@@ -143,7 +199,7 @@ export default function LoginPage() {
                   Remember me for 30 days
                 </span>
               </label>
-              <Link href="#" className="text-[#09090B] font-semibold hover:opacity-70 transition-opacity">
+              <Link href="/forgot-password" className="text-[#09090B] font-semibold hover:opacity-70 transition-opacity">
                 Forgot password?
               </Link>
             </div>

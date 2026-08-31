@@ -2,10 +2,13 @@
 Analytics API — aggregates conversation, agent usage, response time,
 and satisfaction statistics from the MongoDB collections.
 """
+import os
+import glob
 from fastapi import APIRouter, Depends
 from models.schemas import AnalyticsSummary, AgentUsageStat
 from database.mongo import get_db
 from auth.security import get_current_user_id
+from config import get_settings
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -16,10 +19,11 @@ AGENT_NAMES = ["billing", "technical", "product", "complaint", "faq"]
 async def get_analytics_summary(user_id: str = Depends(get_current_user_id)):
     db = get_db()
 
-    # ── Total distinct sessions ───────────────────────────────────────────
     total_sessions = 0
     total_messages = 0
     avg_response_ms = 0.0
+    avg_retrieval_ms = 0.0
+    avg_chunks = 0.0
     escalation_count = 0
     open_tickets = 0
     agent_counts: dict[str, int] = {a: 0 for a in AGENT_NAMES}
@@ -28,30 +32,35 @@ async def get_analytics_summary(user_id: str = Depends(get_current_user_id)):
     try:
         # Count distinct sessions
         sessions_pipeline = [
+            {"$match": {"user_id": user_id}},
             {"$group": {"_id": "$session_id"}},
             {"$count": "total"},
         ]
         async for doc in db.messages.aggregate(sessions_pipeline):
             total_sessions = doc.get("total", 0)
 
-        # Count messages + avg response time
+        # Count assistant messages + measure real avg response time & real avg retrieval metrics
         msg_pipeline = [
-            {"$match": {"role": "assistant"}},
+            {"$match": {"user_id": user_id, "role": "assistant"}},
             {
                 "$group": {
                     "_id": None,
                     "total": {"$sum": 1},
                     "avg_rt": {"$avg": "$response_time_ms"},
+                    "avg_retrieval_time": {"$avg": "$retrieval_time_ms"},
+                    "avg_chunks": {"$avg": "$chunks_retrieved"},
                 }
             },
         ]
         async for doc in db.messages.aggregate(msg_pipeline):
             total_messages = doc.get("total", 0)
             avg_response_ms = round(doc.get("avg_rt") or 0.0, 1)
+            avg_retrieval_ms = round(doc.get("avg_retrieval_time") or 0.0, 1)
+            avg_chunks = round(doc.get("avg_chunks") or 0.0, 1)
 
         # Agent usage
         agent_pipeline = [
-            {"$match": {"role": "assistant"}},
+            {"$match": {"user_id": user_id, "role": "assistant"}},
             {"$unwind": "$agents_invoked"},
             {"$group": {"_id": "$agents_invoked", "count": {"$sum": 1}}},
         ]
@@ -61,24 +70,24 @@ async def get_analytics_summary(user_id: str = Depends(get_current_user_id)):
                 agent_counts[agent] = doc["count"]
 
         # Escalations
-        async for doc in db.escalations.aggregate([{"$count": "total"}]):
+        async for doc in db.escalations.aggregate([
+            {"$match": {"user_id": user_id}},
+            {"$count": "total"}
+        ]):
             escalation_count = doc.get("total", 0)
 
         # Open tickets
         async for doc in db.escalations.aggregate([
-            {"$match": {"status": "open"}},
+            {"$match": {"user_id": user_id, "status": "open"}},
             {"$count": "total"},
         ]):
             open_tickets = doc.get("total", 0)
 
         # Satisfaction score (thumbs-up / total feedback)
-        async for doc in db.feedback.aggregate([
-            {"$group": {"_id": "$rating", "count": {"$sum": 1}}},
-        ]):
-            pass  # Will process below
         up_count = 0
         total_feedback = 0
         async for doc in db.feedback.aggregate([
+            {"$match": {"user_id": user_id}},
             {"$group": {"_id": "$rating", "count": {"$sum": 1}}},
         ]):
             total_feedback += doc["count"]
@@ -103,29 +112,22 @@ async def get_analytics_summary(user_id: str = Depends(get_current_user_id)):
     
     most_used_agent = agent_usage[0].agent if agent_usage and agent_usage[0].count > 0 else "N/A"
     
-    # Mock data for KB stats (in a real app, query FAISS index metadata or kb folder)
-    import os
-    from config import get_settings
+    # Real KB document count from filesystem / vectorstore
     settings = get_settings()
     try:
-        import glob
         paths = glob.glob(os.path.join(settings.KNOWLEDGE_BASE_DIR, "*.txt")) + glob.glob(os.path.join(settings.KNOWLEDGE_BASE_DIR, "*.pdf"))
         total_kb_documents = len(paths)
     except Exception:
-        total_kb_documents = 2 # fallback mock
-
-    # Mock chunk retrieval stats for now (since we don't store it per message yet)
-    avg_chunks_retrieved = 2.4
-    avg_retrieval_time_ms = 45.2
+        total_kb_documents = 0
 
     return AnalyticsSummary(
         total_conversations=total_sessions,
         total_messages=total_messages,
         avg_response_time_ms=avg_response_ms,
-        avg_retrieval_time_ms=avg_retrieval_time_ms,
+        avg_retrieval_time_ms=avg_retrieval_ms,
         most_used_agent=most_used_agent,
         total_kb_documents=total_kb_documents,
-        avg_chunks_retrieved=avg_chunks_retrieved,
+        avg_chunks_retrieved=avg_chunks,
         satisfaction_score=satisfaction_score,
         escalation_count=escalation_count,
         open_ticket_count=open_tickets,
@@ -141,7 +143,7 @@ async def get_agent_usage(user_id: str = Depends(get_current_user_id)):
 
     try:
         pipeline = [
-            {"$match": {"role": "assistant"}},
+            {"$match": {"user_id": user_id, "role": "assistant"}},
             {"$unwind": "$agents_invoked"},
             {"$group": {"_id": "$agents_invoked", "count": {"$sum": 1}}},
         ]
@@ -161,4 +163,3 @@ async def get_agent_usage(user_id: str = Depends(get_current_user_id)):
         )
         for agent, count in sorted(agent_counts.items(), key=lambda x: -x[1])
     ]
-

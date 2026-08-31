@@ -83,16 +83,7 @@ class MockCollection:
 
     async def find_one(self, query):
         for doc in self.docs:
-            match = True
-            for k, v in query.items():
-                if k == "_id":
-                    if str(doc.get("_id")) != str(v):
-                        match = False
-                        break
-                elif doc.get(k) != v:
-                    match = False
-                    break
-            if match:
+            if self._matches(doc, query):
                 return copy.deepcopy(doc)
         return None
 
@@ -122,41 +113,48 @@ class MockCollection:
         self.parent_db.save()
         return doc
 
+    def _matches(self, doc, query):
+        for k, v in query.items():
+            if k == "_id":
+                if str(doc.get("_id")) != str(v):
+                    return False
+            elif doc.get(k) != v:
+                return False
+        return True
+
     def find(self, query):
-        matched = []
-        for doc in self.docs:
-            match = True
-            for k, v in query.items():
-                if k == "_id":
-                    if str(doc.get("_id")) != str(v):
-                        match = False
-                        break
-                elif doc.get(k) != v:
-                    match = False
-                    break
-            if match:
-                matched.append(copy.deepcopy(doc))
+        matched = [copy.deepcopy(d) for d in self.docs if self._matches(d, query)]
         return MockCursor(matched)
+
+    async def delete_many(self, query):
+        orig_len = len(self.docs)
+        self.docs = [d for d in self.docs if not self._matches(d, query)]
+        self.parent_db.save()
+        class MockDeleteResult:
+            def __init__(self, deleted_count):
+                self.deleted_count = deleted_count
+        return MockDeleteResult(orig_len - len(self.docs))
+
+    async def delete_one(self, query):
+        for idx, doc in enumerate(self.docs):
+            if self._matches(doc, query):
+                self.docs.pop(idx)
+                self.parent_db.save()
+                class MockDeleteResult:
+                    def __init__(self, deleted_count):
+                        self.deleted_count = deleted_count
+                return MockDeleteResult(1)
+        class MockDeleteResultZero:
+            def __init__(self):
+                self.deleted_count = 0
+        return MockDeleteResultZero()
 
     def aggregate(self, pipeline):
         docs = copy.deepcopy(self.docs)
         for stage in pipeline:
             if "$match" in stage:
                 match_query = stage["$match"]
-                filtered_docs = []
-                for doc in docs:
-                    match = True
-                    for k, v in match_query.items():
-                        if k == "_id":
-                            if str(doc.get("_id")) != str(v):
-                                match = False
-                                break
-                        elif doc.get(k) != v:
-                            match = False
-                            break
-                    if match:
-                        filtered_docs.append(doc)
-                docs = filtered_docs
+                docs = [d for d in docs if self._matches(d, match_query)]
             elif "$sort" in stage:
                 sort_config = stage["$sort"]
                 for field, order in reversed(list(sort_config.items())):

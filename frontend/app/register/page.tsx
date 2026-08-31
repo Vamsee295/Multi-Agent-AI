@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Eye, EyeOff, LayoutGrid, ArrowRight, User, CheckCircle2 } from "lucide-react";
+import { Mail, Eye, EyeOff, LayoutGrid, ArrowRight, User, CheckCircle2, ArrowLeft, UserCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 
@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   
   const [error, setError] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "existing">("idle");
   const [emailSent, setEmailSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,8 +26,14 @@ export default function RegisterPage() {
     setStatus("loading");
     
     try {
-      const result = await register(name, email, password);
+      const normalizedEmail = email.trim().toLowerCase();
+      const result = await register(name, normalizedEmail, password);
       
+      if (result.emailExists) {
+        setStatus("existing");
+        return;
+      }
+
       if (!result.success) {
         setError(result.error || "Registration failed. Please try again.");
         setStatus("idle");
@@ -35,8 +41,11 @@ export default function RegisterPage() {
       }
 
       if (result.requiresEmailConfirmation) {
-        setEmailSent(true);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("verify_email_target", normalizedEmail);
+        }
         setStatus("success");
+        router.push("/verify-email");
       } else {
         setStatus("success");
         setTimeout(() => {
@@ -50,6 +59,13 @@ export default function RegisterPage() {
     }
   };
 
+  const handleResetForm = () => {
+    setEmail("");
+    setPassword("");
+    setStatus("idle");
+    setError("");
+  };
+
   return (
     <div className="flex min-h-screen bg-white w-full page-enter overflow-hidden">
       
@@ -61,7 +77,13 @@ export default function RegisterPage() {
         
         {/* Mobile Header (Hidden on lg screens) */}
         <div className="lg:hidden w-full max-w-[400px] flex flex-col mb-12 relative">
-          <div className="flex items-center gap-2 mb-6 text-text-primary font-bold tracking-tight text-[16px]">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-[13px] font-medium text-[#71717A] hover:text-[#09090B] transition-colors mb-6"
+          >
+            <ArrowLeft size={14} /> Back to home
+          </Link>
+          <div className="flex items-center gap-2 text-text-primary font-bold tracking-tight text-[16px]">
             <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
               <LayoutGrid size={14} className="text-white" />
             </div>
@@ -72,7 +94,44 @@ export default function RegisterPage() {
         {/* Register Form Container */}
         <div className="w-full max-w-[400px] flex flex-col justify-center">
           
-          {emailSent ? (
+          {status === "existing" ? (
+             <div className="text-center py-4 page-enter">
+              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-100 shadow-sm">
+                <UserCircle2 size={28} />
+              </div>
+              <h2 className="text-[26px] font-bold text-[#09090B] tracking-tight mb-2">
+                Email already exists
+              </h2>
+              <p className="text-[14px] text-[#71717A] font-medium leading-relaxed mb-8">
+                This email is already registered. Sign in to continue using your account.
+              </p>
+
+              <div className="space-y-3">
+                <Link
+                  href="/login"
+                  className="w-full rounded-xl h-[46px] text-[14px] font-semibold bg-[#09090B] hover:bg-[#27272A] text-white transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  Sign in <ArrowRight size={16} />
+                </Link>
+                
+                <Link
+                  href="/forgot-password"
+                  className="w-full rounded-xl h-[46px] text-[14px] font-semibold bg-white border border-[#E4E4E7] hover:bg-[#FAFAFA] text-[#09090B] transition-all flex items-center justify-center shadow-sm"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              
+              <div className="mt-8">
+                <button
+                   onClick={handleResetForm}
+                   className="text-[13px] font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
+                >
+                  Use a different email address
+                </button>
+              </div>
+            </div>
+          ) : emailSent ? (
             <div className="text-center py-4">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-emerald-100 shadow-sm">
                 <CheckCircle2 size={28} />

@@ -46,7 +46,9 @@ export function BackendStatus() {
       <span className="text-border">|</span>
       <span>{health.knowledge_base_chunks_indexed} chunks indexed</span>
       <span className="text-border">|</span>
-      <span className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded">{health.llm_provider}</span>
+      <span className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded">
+        {health.llm_provider}{health.llm_model ? ` / ${health.llm_model}` : ""}
+      </span>
     </div>
   );
 }

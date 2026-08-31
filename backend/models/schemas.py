@@ -39,6 +39,12 @@ SentimentLabel = Literal["positive", "neutral", "frustrated", "angry"]
 class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     message: str = Field(min_length=1, max_length=4000)
+    model: Optional[str] = None
+    response_style: Optional[Literal["concise", "balanced", "detailed"]] = None
+    use_memory: Optional[bool] = True
+    use_rag: Optional[bool] = True
+    automatic_routing: Optional[bool] = True
+    preferred_agent: Optional[AgentName] = None
 
 
 class RetrievedChunk(BaseModel):

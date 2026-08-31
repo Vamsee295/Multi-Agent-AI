@@ -10,8 +10,10 @@ import {
   fetchSessions,
   SessionSummary,
   getApiErrorMessage,
-  submitFeedback as apiSubmitFeedback
+  submitFeedback as apiSubmitFeedback,
+  deleteSession as apiDeleteSession
 } from "@/services/api";
+import { useSettings } from "@/hooks/useSettings";
 
 const SESSION_KEY = "techmart_session_id";
 
@@ -33,6 +35,8 @@ export interface ChatMessage {
   responseTimeMs?: number;
   feedback?: "up" | "down";
   isNew?: boolean;
+  isPending?: boolean;
+  isError?: boolean;
 }
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -65,6 +69,7 @@ interface UseChatOptions {
 }
 
 export function useChat({ isLoggedIn, isInitialized }: UseChatOptions) {
+  const { settings } = useSettings();
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -157,31 +162,54 @@ export function useChat({ isLoggedIn, isInitialized }: UseChatOptions) {
         content: text,
         agentsInvoked: [],
       };
-      setMessages((prev) => [...prev, userMessage]);
+
+      const pendingAssistantId = generateUUID();
+      const pendingAssistantMessage: ChatMessage = {
+        id: pendingAssistantId,
+        role: "assistant",
+        content: "",
+        agentsInvoked: [],
+        isNew: true,
+        isPending: true,
+      };
+
+      setMessages((prev) => [...prev, userMessage, pendingAssistantMessage]);
       setIsSending(true);
       setError(null);
 
       try {
-        const response = await sendChatMessage(text, sessionId);
+        const response = await sendChatMessage(text, {
+          sessionId,
+          model: settings.model,
+          responseStyle: settings.responseStyle,
+          useMemory: settings.useMemory,
+          useRag: settings.useRag,
+          automaticRouting: settings.automaticRouting,
+        });
         setSessionId(response.session_id);
         window.localStorage.setItem(SESSION_KEY, response.session_id);
         setActiveAgents(response.agents_invoked);
 
-        const assistantMessage: ChatMessage = {
-          id: generateUUID(),
-          role: "assistant",
-          content: response.message,
-          agentsInvoked: response.agents_invoked,
-          escalated: response.escalated,
-          escalationDetails: response.escalation_details,
-          retrievedContext: response.retrieved_context,
-          confidence: response.intent_confidence,
-          sentiment: response.sentiment,
-          sentimentScore: response.sentiment_score,
-          responseTimeMs: response.response_time_ms,
-          isNew: true,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === pendingAssistantId
+              ? {
+                  ...msg,
+                  content: response.message,
+                  agentsInvoked: response.agents_invoked,
+                  escalated: response.escalated,
+                  escalationDetails: response.escalation_details,
+                  retrievedContext: response.retrieved_context,
+                  confidence: response.intent_confidence,
+                  sentiment: response.sentiment,
+                  sentimentScore: response.sentiment_score,
+                  responseTimeMs: response.response_time_ms,
+                  isNew: true,
+                  isPending: false,
+                }
+              : msg
+          )
+        );
 
         if (isLoggedIn) {
           await reloadSessions();
@@ -189,12 +217,27 @@ export function useChat({ isLoggedIn, isInitialized }: UseChatOptions) {
 
         setTimeout(() => setActiveAgents([]), 2200);
       } catch (err) {
-        setError(getApiErrorMessage(err, "Couldn't reach the support assistant."));
+        const errMsg = getApiErrorMessage(err, "Couldn't reach the support assistant.");
+        setError(errMsg);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === pendingAssistantId
+              ? {
+                  ...msg,
+                  content: `**Connection Error:** ${errMsg}`,
+                  agentsInvoked: [],
+                  isNew: true,
+                  isPending: false,
+                  isError: true,
+                }
+              : msg
+          )
+        );
       } finally {
         setIsSending(false);
       }
     },
-    [sessionId, isLoggedIn, reloadSessions]
+    [sessionId, isLoggedIn, reloadSessions, settings]
   );
 
   const selectSession = useCallback(
@@ -215,6 +258,21 @@ export function useChat({ isLoggedIn, isInitialized }: UseChatOptions) {
     }
   }, [sessionId]);
 
+  const deleteConversation = useCallback(async (id: string) => {
+    try {
+      await apiDeleteSession(id);
+      if (sessionId === id) {
+        startNewChat();
+      }
+      if (isLoggedIn) {
+        await reloadSessions();
+      }
+    } catch (err) {
+      console.error("Failed to delete conversation:", err);
+      setError("Failed to delete conversation. Please try again.");
+    }
+  }, [sessionId, isLoggedIn, reloadSessions, startNewChat]);
+
   return {
     messages,
     sendMessage,
@@ -228,5 +286,6 @@ export function useChat({ isLoggedIn, isInitialized }: UseChatOptions) {
     startNewChat,
     reloadSessions,
     handleFeedback,
+    deleteConversation,
   };
 }

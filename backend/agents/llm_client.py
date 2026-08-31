@@ -17,7 +17,7 @@ def _chat_messages(system_prompt: str, user_prompt: str) -> list[dict]:
     ]
 
 
-def generate(system_prompt: str, user_prompt: str) -> str:
+def generate(system_prompt: str, user_prompt: str, model_override: str = None) -> str:
     settings = get_settings()
     provider = settings.LLM_PROVIDER.lower()
 
@@ -25,7 +25,7 @@ def generate(system_prompt: str, user_prompt: str) -> str:
         from openai import OpenAI
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         resp = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
+            model=model_override or settings.OPENAI_MODEL,
             messages=_chat_messages(system_prompt, user_prompt),
             temperature=0.3,
         )
@@ -34,11 +34,22 @@ def generate(system_prompt: str, user_prompt: str) -> str:
     if provider == "groq":
         from groq import Groq
         client = Groq(api_key=settings.GROQ_API_KEY)
-        resp = client.chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=_chat_messages(system_prompt, user_prompt),
-            temperature=0.3,
-        )
+        target_model = model_override or settings.GROQ_MODEL
+        try:
+            resp = client.chat.completions.create(
+                model=target_model,
+                messages=_chat_messages(system_prompt, user_prompt),
+                temperature=0.3,
+            )
+        except Exception as e:
+            if "does not exist" in str(e).lower() or "access" in str(e).lower() or "not_found" in str(e).lower() or "decommissioned" in str(e).lower():
+                resp = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile" if "llama" in target_model.lower() else "openai/gpt-oss-120b",
+                    messages=_chat_messages(system_prompt, user_prompt),
+                    temperature=0.3,
+                )
+            else:
+                raise
         return resp.choices[0].message.content or ""
 
     if provider == "gemini":
@@ -75,11 +86,21 @@ def generate_json(system_prompt: str, user_prompt: str) -> dict:
     if provider == "groq":
         from groq import Groq
         client = Groq(api_key=settings.GROQ_API_KEY)
-        resp = client.chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=_chat_messages(system_prompt, user_prompt + json_instruction),
-            temperature=0.1,
-        )
+        try:
+            resp = client.chat.completions.create(
+                model=settings.GROQ_MODEL,
+                messages=_chat_messages(system_prompt, user_prompt + json_instruction),
+                temperature=0.1,
+            )
+        except Exception as e:
+            if "does not exist" in str(e).lower() or "access" in str(e).lower() or "not_found" in str(e).lower():
+                resp = client.chat.completions.create(
+                    model="openai/gpt-oss-120b",
+                    messages=_chat_messages(system_prompt, user_prompt + json_instruction),
+                    temperature=0.1,
+                )
+            else:
+                raise
         return _parse_json_response(resp.choices[0].message.content or "{}")
 
     if provider == "gemini":

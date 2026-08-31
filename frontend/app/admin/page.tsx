@@ -99,8 +99,8 @@ export default function AdminPage() {
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Knowledge Base Admin</h1>
-            <p className="text-[14px] text-text-secondary">Manage documents for Retrieval Augmented Generation (RAG).</p>
+            <h1 className="text-2xl font-bold text-text-primary">RAG Knowledge Base</h1>
+            <p className="text-[14px] text-text-secondary">Manage documents and vector embeddings for the autonomous orchestration pipeline.</p>
           </div>
         </div>
 
@@ -136,8 +136,8 @@ export default function AdminPage() {
             {isUploading ? (
               <div className="flex flex-col items-center">
                 <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mb-3" />
-                <p className="text-[14px] font-medium text-text-primary">Uploading & Indexing...</p>
-                <p className="text-[13px] text-text-muted">This may take a moment depending on file size.</p>
+                <p className="text-[14px] font-medium text-text-primary">Processing Document...</p>
+                <p className="text-[13px] text-text-muted">Parsing text, generating embeddings, and updating FAISS vector store.</p>
               </div>
             ) : (
               <div className="flex flex-col items-center">

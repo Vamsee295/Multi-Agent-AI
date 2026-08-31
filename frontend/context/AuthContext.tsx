@@ -8,9 +8,16 @@ import { UserPublic } from "@/services/api";
 const GUEST_KEY = "techmart_guest";
 const SESSION_STORAGE_KEY = "techmart_session_id";
 
+export interface LoginResult {
+  success: boolean;
+  error?: string;
+  code?: "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "EMAIL_NOT_FOUND" | "RATE_LIMITED" | "UNKNOWN";
+}
+
 export interface RegisterResult {
   success: boolean;
   requiresEmailConfirmation?: boolean;
+  emailExists?: boolean;
   error?: string;
 }
 
@@ -24,8 +31,10 @@ export interface AuthContextType {
   isInitialized: boolean;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   register: (name: string, email: string, password: string) => Promise<RegisterResult>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  resendSignupOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   continueAsGuest: () => void;
   setError: (err: string | null) => void;
@@ -57,7 +66,7 @@ function formatSupabaseError(error: AuthError | Error): string {
   if (msg.includes("email not confirmed")) {
     return "Please check your inbox and verify your email before logging in.";
   }
-  if (msg.includes("user already registered") || msg.includes("already been registered")) {
+  if (msg.includes("user already registered") || msg.includes("already been registered") || msg.includes("email_exists")) {
     return "An account with this email already exists.";
   }
   if (msg.includes("password should be at least")) {
@@ -65,6 +74,18 @@ function formatSupabaseError(error: AuthError | Error): string {
   }
   if (msg.includes("rate limit") || msg.includes("over_email_send_rate_limit")) {
     return "Too many requests. Please wait a moment before trying again.";
+  }
+  if (msg.includes("token has expired") || msg.includes("otp expired") || msg.includes("expired")) {
+    return "This verification code has expired. Request a new code.";
+  }
+  if (msg.includes("token is invalid") || msg.includes("invalid token") || msg.includes("otp invalid") || msg.includes("bad_code") || msg.includes("token has already been used") || msg.includes("invalid")) {
+    return "That verification code is incorrect. Please try again.";
+  }
+  if (msg.includes("network") || msg.includes("fetch") || msg.includes("failed to fetch")) {
+    return "We couldn't verify the code. Please check your connection and try again.";
+  }
+  if (msg.includes("already confirmed") || msg.includes("already verified")) {
+    return "Your email is already verified.";
   }
   return error.message || "An authentication error occurred.";
 }
@@ -137,18 +158,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const user = useMemo(() => mapSupabaseUser(supabaseUser), [supabaseUser]);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
     setLoading(true);
     setError(null);
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: normalizedEmail,
         password,
       });
 
       if (signInError) {
-        setError(formatSupabaseError(signInError));
-        return false;
+        const msg = signInError.message.toLowerCase();
+        let code: LoginResult["code"] = "UNKNOWN";
+        let formatted = formatSupabaseError(signInError);
+
+        if (msg.includes("email not confirmed") || msg.includes("email_not_confirmed")) {
+          code = "EMAIL_NOT_VERIFIED";
+          formatted = "Please verify your email before signing in.";
+        } else if (msg.includes("user not found") || msg.includes("user_not_found") || msg.includes("no user")) {
+          code = "EMAIL_NOT_FOUND";
+          formatted = "We couldn't find an account with this email address.";
+        } else if (msg.includes("invalid login credentials") || msg.includes("invalid_grant")) {
+          code = "INVALID_CREDENTIALS";
+          formatted = "Invalid email or password. Please try again.";
+        } else if (msg.includes("rate limit") || msg.includes("over_email_send_rate_limit")) {
+          code = "RATE_LIMITED";
+          formatted = "Too many attempts. Please wait a moment before trying again.";
+        }
+
+        setError(formatted);
+        return { success: false, error: formatted, code };
       }
 
       if (data.session) {
@@ -159,13 +199,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           window.localStorage.removeItem(GUEST_KEY);
           window.localStorage.removeItem(SESSION_STORAGE_KEY);
         }
-        return true;
+        return { success: true };
       }
 
-      return false;
+      return { success: false, error: "Authentication failed. Please try again.", code: "UNKNOWN" };
     } catch (err: any) {
-      setError(formatSupabaseError(err));
-      return false;
+      const formatted = formatSupabaseError(err);
+      setError(formatted);
+      return { success: false, error: formatted, code: "UNKNOWN" };
     } finally {
       setLoading(false);
     }
@@ -176,8 +217,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       try {
+        const normalizedEmail = email.trim().toLowerCase();
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: normalizedEmail,
           password,
           options: {
             data: {
@@ -187,10 +229,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         });
 
+        // 1. Check if Supabase explicitly tells us the user already exists
         if (signUpError) {
+          const msg = signUpError.message.toLowerCase();
+          if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("email_exists") || signUpError.status === 422) {
+             return { success: false, emailExists: true, error: "This email is already registered." };
+          }
           const formatted = formatSupabaseError(signUpError);
           setError(formatted);
           return { success: false, error: formatted };
+        }
+
+        // 2. Check for obfuscated duplicate account response
+        // When email confirmation is ON, Supabase often returns success but with an empty identities array for existing confirmed users
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+           return { success: false, emailExists: true, error: "This email is already registered." };
         }
 
         // Check if email confirmation is required (session is null when email confirmation is enabled)
@@ -206,6 +259,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: formatted };
       } finally {
         setLoading(false);
+      }
+    },
+    []
+  );
+
+  const verifyEmailOtp = useCallback(
+    async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const normalizedEmail = email.trim().toLowerCase();
+        const { data, error: verifyError } = await supabase.auth.verifyOtp({
+          email: normalizedEmail,
+          token: token.trim(),
+          type: "email",
+        });
+
+        if (verifyError) {
+          const formatted = formatSupabaseError(verifyError);
+          setError(formatted);
+          return { success: false, error: formatted };
+        }
+
+        if (data.session) {
+          setSession(data.session);
+          setSupabaseUser(data.session.user);
+          setIsGuest(false);
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem(GUEST_KEY);
+            window.localStorage.removeItem(SESSION_STORAGE_KEY);
+          }
+          return { success: true };
+        }
+
+        // Fetch refreshed session if not returned directly
+        const { data: refreshed } = await supabase.auth.getSession();
+        if (refreshed.session) {
+          setSession(refreshed.session);
+          setSupabaseUser(refreshed.session.user);
+          setIsGuest(false);
+        }
+
+        return { success: true };
+      } catch (err: any) {
+        const formatted = formatSupabaseError(err);
+        setError(formatted);
+        return { success: false, error: formatted };
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const resendSignupOtp = useCallback(
+    async (email: string): Promise<{ success: boolean; error?: string }> => {
+      setError(null);
+      try {
+        const { error: resendError } = await supabase.auth.resend({
+          type: "signup",
+          email: email.trim(),
+        });
+
+        if (resendError) {
+          const formatted = formatSupabaseError(resendError);
+          setError(formatted);
+          return { success: false, error: formatted };
+        }
+
+        return { success: true };
+      } catch (err: any) {
+        const formatted = formatSupabaseError(err);
+        setError(formatted);
+        return { success: false, error: formatted };
       }
     },
     []
@@ -256,6 +383,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       login,
       register,
+      verifyEmailOtp,
+      resendSignupOtp,
       logout,
       continueAsGuest,
       setError,
@@ -272,6 +401,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       login,
       register,
+      verifyEmailOtp,
+      resendSignupOtp,
       logout,
       continueAsGuest,
     ]

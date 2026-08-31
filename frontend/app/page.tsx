@@ -2,6 +2,8 @@
 
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
+import { SystemCapabilitiesStrip } from "@/components/landing/SystemCapabilitiesStrip";
+import { LiveQueryDemoSection } from "@/components/landing/LiveQueryDemoSection";
 import { LifecycleSection } from "@/components/landing/LifecycleSection";
 import { AgentEcosystemSection } from "@/components/landing/AgentEcosystemSection";
 import { ArchitectureSection } from "@/components/landing/ArchitectureSection";
@@ -15,6 +17,8 @@ export default function RootPage() {
       <Navbar />
       <main className="w-full max-w-full overflow-x-hidden">
         <HeroSection />
+        <SystemCapabilitiesStrip />
+        <LiveQueryDemoSection />
         <LifecycleSection />
         <AgentEcosystemSection />
         <ArchitectureSection />

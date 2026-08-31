@@ -72,3 +72,59 @@ async def test_list_sessions_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.get("/api/chat/sessions")
         assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_session_success_and_cascade():
+    user_id, token = _seed_user()
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Create a session
+        chat = await client.post(
+            "/api/chat",
+            json={"message": "I need a refund"},
+            headers=headers,
+        )
+        assert chat.status_code == 200
+        session_id = chat.json()["session_id"]
+        
+        # Verify it exists
+        sessions = await client.get("/api/chat/sessions", headers=headers)
+        assert any(s["session_id"] == session_id for s in sessions.json())
+        
+        # Delete it
+        delete_resp = await client.delete(f"/api/chat/{session_id}", headers=headers)
+        assert delete_resp.status_code == 204
+        
+        # Verify it's gone
+        sessions_after = await client.get("/api/chat/sessions", headers=headers)
+        assert not any(s["session_id"] == session_id for s in sessions_after.json())
+        
+        # Verify messages are gone (history should return empty or error, but we can check the mock db directly)
+        db = mongo_module._mock_db
+        assert len([m for m in db.messages.docs if m["session_id"] == session_id]) == 0
+
+
+@pytest.mark.asyncio
+async def test_delete_session_requires_owner():
+    # User A creates a session
+    user_a_id, token_a = _seed_user("usera@example.com")
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        chat = await client.post(
+            "/api/chat",
+            json={"message": "I need help with billing"},
+            headers=headers_a,
+        )
+        session_id = chat.json()["session_id"]
+        
+        # User B tries to delete User A's session
+        _, token_b = _seed_user("userb@example.com")
+        headers_b = {"Authorization": f"Bearer {token_b}"}
+        
+        delete_denied = await client.delete(f"/api/chat/{session_id}", headers=headers_b)
+        assert delete_denied.status_code == 403

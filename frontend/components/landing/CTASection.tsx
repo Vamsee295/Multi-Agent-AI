@@ -10,12 +10,13 @@ export function CTASection() {
       <div className="max-w-3xl mx-auto px-6">
         <ScrollReveal delay={100} direction="up">
           <h2 className="text-[36px] sm:text-[48px] font-bold text-[#09090B] tracking-tight mb-6">
-            Ready to put your agents to work?
+            Intelligence isn't one model. <br className="hidden sm:block" />
+            <span className="text-[#71717A]">It's an orchestrated system.</span>
           </h2>
         </ScrollReveal>
         <ScrollReveal delay={200} direction="up">
-          <p className="text-[16px] sm:text-[18px] text-[#71717A] mb-10 font-medium">
-            Enter the Multi-Agent AI workspace and start orchestrating intelligent workflows immediately.
+          <p className="text-[16px] sm:text-[18px] text-[#A1A1AA] mb-10 font-medium max-w-xl mx-auto">
+            Experience the next generation of autonomous customer support. Deploy specialized agents that collaborate to solve real problems.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={300} direction="up">

@@ -21,7 +21,7 @@ async def list_tickets(
     db = get_db()
     tickets = []
     try:
-        query = {}
+        query = {"user_id": user_id}
         if status in ("open", "resolved"):
             query["status"] = status
 
@@ -58,7 +58,7 @@ async def resolve_ticket(
         raise HTTPException(status_code=400, detail="Invalid ticket ID")
 
     result = await db.escalations.find_one_and_update(
-        {"_id": oid},
+        {"_id": oid, "user_id": user_id},
         {"$set": {"status": "resolved", "resolved_at": datetime.utcnow(), "resolved_by": user_id}},
         return_document=True,
     )

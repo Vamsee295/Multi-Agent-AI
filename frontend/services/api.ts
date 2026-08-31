@@ -1,7 +1,10 @@
 import axios, { AxiosError } from "axios";
 import { supabase } from "@/lib/supabase/client";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL !== undefined
+    ? process.env.NEXT_PUBLIC_API_BASE_URL
+    : (typeof window !== "undefined" ? "" : "http://localhost:8000");
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,12 +12,28 @@ export const api = axios.create({
   timeout: 60_000,
 });
 
+let cachedToken: string | null = null;
+let lastTokenCheck = 0;
+
+if (typeof window !== "undefined") {
+  supabase.auth.onAuthStateChange((_event, session) => {
+    cachedToken = session?.access_token || null;
+    lastTokenCheck = Date.now();
+  });
+}
+
 api.interceptors.request.use(async (config) => {
   if (typeof window !== "undefined") {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        config.headers.Authorization = `Bearer ${session.access_token}`;
+      const now = Date.now();
+      // Only fetch from storage if not cached or cache is older than 60s
+      if (!cachedToken || now - lastTokenCheck > 60_000) {
+        const { data: { session } } = await supabase.auth.getSession();
+        cachedToken = session?.access_token || null;
+        lastTokenCheck = now;
+      }
+      if (cachedToken) {
+        config.headers.Authorization = `Bearer ${cachedToken}`;
       }
     } catch (err) {
       console.warn("Could not retrieve active Supabase session for request:", err);
@@ -92,6 +111,7 @@ export interface HealthResponse {
   database_connected: boolean;
   knowledge_base_chunks_indexed: number;
   llm_provider: string;
+  llm_model?: string;
   version: string;
 }
 
@@ -137,8 +157,30 @@ export async function fetchMe(): Promise<UserPublic> {
   return data;
 }
 
-export async function sendChatMessage(message: string, sessionId?: string) {
-  const { data } = await api.post("/api/chat", { message, session_id: sessionId });
+export interface SendChatMessageOptions {
+  sessionId?: string;
+  model?: string;
+  responseStyle?: "concise" | "balanced" | "detailed";
+  useMemory?: boolean;
+  useRag?: boolean;
+  automaticRouting?: boolean;
+  preferredAgent?: AgentName;
+}
+
+export async function sendChatMessage(message: string, options?: string | SendChatMessageOptions) {
+  let payload: Record<string, any> = { message };
+  if (typeof options === "string") {
+    payload.session_id = options;
+  } else if (options) {
+    payload.session_id = options.sessionId;
+    if (options.model) payload.model = options.model;
+    if (options.responseStyle) payload.response_style = options.responseStyle;
+    if (options.useMemory !== undefined) payload.use_memory = options.useMemory;
+    if (options.useRag !== undefined) payload.use_rag = options.useRag;
+    if (options.automaticRouting !== undefined) payload.automatic_routing = options.automaticRouting;
+    if (options.preferredAgent) payload.preferred_agent = options.preferredAgent;
+  }
+  const { data } = await api.post("/api/chat", payload);
   return data as ChatResponse;
 }
 
@@ -160,6 +202,10 @@ export async function summarizeSession(sessionId: string): Promise<{ session_id:
 export async function submitFeedback(sessionId: string, rating: "up" | "down", comment?: string) {
   const { data } = await api.post(`/api/chat/${sessionId}/feedback`, { rating, comment });
   return data;
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  await api.delete(`/api/chat/${sessionId}`);
 }
 
 export async function fetchAnalytics(): Promise<AnalyticsSummary> {

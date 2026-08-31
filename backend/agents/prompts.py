@@ -89,7 +89,14 @@ def build_agent_user_prompt(
     message: str,
     history_snippet: str,
     context_block: str,
+    response_style: str = "balanced",
 ) -> str:
+    style_instruction = "- Be balanced and helpful (3-5 sentences unless troubleshooting steps are needed)."
+    if response_style == "concise":
+        style_instruction = "- Be extremely concise and direct (under 3 sentences, no unnecessary filler)."
+    elif response_style == "detailed":
+        style_instruction = "- Provide a detailed, comprehensive, step-by-step answer explaining all relevant nuances."
+
     return (
         f"Conversation so far:\n{history_snippet or '(no prior turns)'}\n\n"
         f"Retrieved company context (cite by source when used):\n{context_block}\n\n"
@@ -98,7 +105,7 @@ def build_agent_user_prompt(
         "- Answer using ONLY the retrieved context for factual claims.\n"
         "- Mention the relevant source document when citing policy (e.g., 'Per our Refund Policy…').\n"
         "- If the context does not cover the question, say so honestly — do not guess.\n"
-        "- Be concise (3-6 sentences unless troubleshooting steps are needed)."
+        f"{style_instruction}"
     )
 
 

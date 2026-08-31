@@ -39,7 +39,7 @@ export function HeroSection() {
               href="/register" 
               className="w-full sm:w-auto px-8 py-4 bg-[#09090B] text-white text-[14px] font-semibold rounded-xl hover:bg-[#27272A] transition-all flex items-center justify-center gap-2 shadow-sm"
             >
-              GET STARTED <ArrowRight size={16} />
+              START ORCHESTRATING <ArrowRight size={16} />
             </Link>
             <a 
               href="#architecture" 
@@ -51,49 +51,102 @@ export function HeroSection() {
         </ScrollReveal>
 
         {/* Minimalist Architectural Visual */}
-        <ScrollReveal delay={500} direction="up" className="w-full max-w-3xl">
-          <div className="mt-24 relative w-full h-[280px]">
+        <ScrollReveal delay={500} direction="up" className="w-full max-w-4xl">
+          <div className="mt-20 relative w-full h-[400px]">
             {/* Decorative faint background grid */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
 
             {/* Diagram Lines & Nodes */}
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 400" fill="none" xmlns="http://www.w3.org/2000/svg">
               
-              {/* Main Orchestrator Node */}
-              <rect x="330" y="80" width="140" height="40" rx="8" className="fill-white stroke-[#09090B]" strokeWidth="1.5" />
-              <text x="400" y="104" className="fill-[#09090B] text-[12px] font-bold tracking-wider" textAnchor="middle">AI CORE</text>
-              <circle cx="400" cy="100" r="28" className="fill-black/[0.03] stroke-[#09090B]/30 animate-[pulse_4s_ease-in-out_infinite]" strokeWidth="1" />
+              <defs>
+                {/* Glow filter for active nodes */}
+                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
 
-              {/* Top Node (Observe) */}
+              {/* LINES & PARTICLES */}
+              {/* 1 to 2 */}
+              <path d="M400 42 L400 70" className="stroke-[#E4E4E7]" strokeWidth="1" />
+              <circle r="3" className="fill-[#09090B]">
+                <animateMotion dur="1.5s" repeatCount="indefinite" path="M400 42 L400 70" />
+              </circle>
+
+              {/* 2 to 3 */}
+              <path d="M400 102 L400 130" className="stroke-[#E4E4E7]" strokeWidth="1" />
+              <circle r="3" className="fill-[#09090B]">
+                <animateMotion dur="1.5s" repeatCount="indefinite" path="M400 102 L400 130" />
+              </circle>
+
+              {/* 3 to 4a & 4b */}
+              <path d="M400 162 L260 200" className="stroke-[#E4E4E7]" strokeWidth="1.5" strokeDasharray="4 4" />
+              <circle r="3" className="fill-[#09090B]">
+                <animateMotion dur="2s" repeatCount="indefinite" path="M400 162 L260 200" />
+              </circle>
+
+              <path d="M400 162 L540 200" className="stroke-[#E4E4E7]" strokeWidth="1.5" strokeDasharray="4 4" />
+              <circle r="3" className="fill-[#09090B]">
+                <animateMotion dur="2s" repeatCount="indefinite" path="M400 162 L540 200" />
+              </circle>
+
+              {/* 4a & 4b to 5 */}
+              <path d="M260 232 L400 270" className="stroke-[#E4E4E7]" strokeWidth="1.5" strokeDasharray="4 4" />
+              <circle r="3" className="fill-[#09090B]">
+                <animateMotion dur="2s" repeatCount="indefinite" path="M260 232 L400 270" />
+              </circle>
+
+              <path d="M540 232 L400 270" className="stroke-[#E4E4E7]" strokeWidth="1.5" strokeDasharray="4 4" />
+              <circle r="3" className="fill-[#09090B]">
+                <animateMotion dur="2s" repeatCount="indefinite" path="M540 232 L400 270" />
+              </circle>
+
+              {/* 5 to 6 */}
+              <path d="M400 302 L400 330" className="stroke-[#09090B]/30" strokeWidth="1.5" />
+              <circle r="4" className="fill-[#09090B]">
+                <animateMotion dur="1.5s" repeatCount="indefinite" path="M400 302 L400 330" />
+              </circle>
+
+              {/* NODES */}
+              {/* 1. User Query */}
               <rect x="350" y="10" width="100" height="32" rx="6" className="fill-white stroke-[#E4E4E7]" strokeWidth="1" />
-              <text x="400" y="30" className="fill-[#71717A] text-[10px] font-semibold tracking-wider" textAnchor="middle">OBSERVE</text>
-              
-              {/* Line Observe -> Core */}
-              <path d="M400 42 L400 80" className="stroke-[#E4E4E7]" strokeWidth="1" strokeDasharray="4 4" />
-              <polygon points="397,76 403,76 400,80" className="fill-[#A1A1AA]" />
+              <text x="400" y="30" className="fill-[#71717A] text-[10px] font-semibold tracking-wider" textAnchor="middle">USER QUERY</text>
 
-              {/* Bottom Nodes */}
-              {/* Execute */}
-              <rect x="250" y="180" width="100" height="32" rx="6" className="fill-white stroke-[#E4E4E7]" strokeWidth="1" />
-              <text x="300" y="200" className="fill-[#71717A] text-[10px] font-semibold tracking-wider" textAnchor="middle">EXECUTE</text>
-              
-              {/* Memory */}
-              <rect x="450" y="180" width="100" height="32" rx="6" className="fill-white stroke-[#E4E4E7]" strokeWidth="1" />
-              <text x="500" y="200" className="fill-[#71717A] text-[10px] font-semibold tracking-wider" textAnchor="middle">MEMORY</text>
+              {/* 2. Observe */}
+              <g className="group cursor-pointer">
+                <rect x="310" y="70" width="180" height="32" rx="6" className="fill-white stroke-[#09090B] transition-all duration-300" strokeWidth="1.5" filter="url(#glow)" />
+                <text x="400" y="90" className="fill-[#09090B] text-[10px] font-bold tracking-wider" textAnchor="middle">OBSERVE (Intent &amp; Sentiment)</text>
+              </g>
 
-              {/* Bottom Final */}
-              <rect x="350" y="240" width="100" height="32" rx="6" className="fill-white stroke-[#E4E4E7]" strokeWidth="1" />
-              <text x="400" y="260" className="fill-[#71717A] text-[10px] font-semibold tracking-wider" textAnchor="middle">REPLAN</text>
+              {/* 3. Router */}
+              <rect x="350" y="130" width="100" height="32" rx="6" className="fill-white stroke-[#E4E4E7]" strokeWidth="1" />
+              <text x="400" y="150" className="fill-[#71717A] text-[10px] font-semibold tracking-wider" textAnchor="middle">ROUTER</text>
 
-              {/* Lines Core -> Bottom Nodes */}
-              <path d="M370 120 L300 180" className="stroke-[#09090B]/30" strokeWidth="1.5" />
-              <circle cx="335" cy="150" r="3" className="fill-[#09090B] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
-              
-              <path d="M430 120 L500 180" className="stroke-[#E4E4E7]" strokeWidth="1" strokeDasharray="4 4" />
-              
-              {/* Lines Execute/Memory -> Replan */}
-              <path d="M300 212 L380 240" className="stroke-[#E4E4E7]" strokeWidth="1" />
-              <path d="M500 212 L420 240" className="stroke-border" strokeWidth="1" />
+              {/* 4a. Agents */}
+              <g className="group cursor-pointer">
+                <rect x="170" y="200" width="180" height="32" rx="6" className="fill-white stroke-[#09090B] transition-all duration-300" strokeWidth="1.5" />
+                <text x="260" y="220" className="fill-[#09090B] text-[10px] font-bold tracking-wider" textAnchor="middle">SPECIALIZED AGENTS</text>
+                <circle cx="185" cy="216" r="3" className="fill-green-500 animate-pulse" />
+              </g>
+
+              {/* 4b. RAG / FAISS */}
+              <g className="group cursor-pointer">
+                <rect x="450" y="200" width="180" height="32" rx="6" className="fill-white stroke-[#09090B] transition-all duration-300" strokeWidth="1.5" />
+                <text x="540" y="220" className="fill-[#09090B] text-[10px] font-bold tracking-wider" textAnchor="middle">RAG / FAISS</text>
+                <circle cx="465" cy="216" r="3" className="fill-blue-500 animate-pulse" />
+              </g>
+
+              {/* 5. Aggregator */}
+              <rect x="350" y="270" width="100" height="32" rx="6" className="fill-white stroke-[#E4E4E7]" strokeWidth="1" />
+              <text x="400" y="290" className="fill-[#71717A] text-[10px] font-semibold tracking-wider" textAnchor="middle">AGGREGATOR</text>
+
+              {/* 6. Final Response */}
+              <g className="group cursor-pointer">
+                <rect x="300" y="330" width="200" height="36" rx="8" className="fill-[#09090B] stroke-[#09090B] transition-all duration-300 shadow-xl" strokeWidth="1" />
+                <text x="400" y="352" className="fill-white text-[11px] font-bold tracking-wider" textAnchor="middle">FINAL GROUNDED RESPONSE</text>
+              </g>
+
             </svg>
           </div>
         </ScrollReveal>

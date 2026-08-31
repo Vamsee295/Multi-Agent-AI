@@ -148,12 +148,22 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
     if payload.session_id:
         await _verify_session_access(db, session_id, user_id)
 
-    history_snippet = await _build_history_snippet(db, session_id)
+    history_snippet = ""
+    if payload.use_memory:
+        history_snippet = await _build_history_snippet(db, session_id)
 
     await db.messages.insert_one(new_message_doc(session_id, user_id, "user", payload.message, []))
 
     try:
-        routed = route_and_respond(payload.message, history_snippet)
+        routed = route_and_respond(
+            message=payload.message,
+            history_snippet=history_snippet,
+            use_rag=True if payload.use_rag is None else payload.use_rag,
+            model=payload.model,
+            response_style=payload.response_style or "balanced",
+            automatic_routing=True if payload.automatic_routing is None else payload.automatic_routing,
+            preferred_agent=payload.preferred_agent,
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -167,6 +177,8 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
             response_time_ms=routed.response_time_ms,
             sentiment=routed.sentiment,
             sentiment_score=routed.sentiment_score,
+            retrieval_time_ms=routed.retrieval_time_ms,
+            chunks_retrieved=routed.chunks_retrieved,
         )
     )
 
@@ -328,3 +340,33 @@ async def submit_feedback(
         rating=payload.rating,
         created_at=datetime.now(timezone.utc),
     )
+
+
+# ── Delete Session ────────────────────────────────────────────────────────────
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(
+    session_id: str,
+    user_id: Optional[str] = Depends(_optional_user_id),
+):
+    """Delete a chat session and all its associated data (messages, feedback, escalations, titles)."""
+    db = get_db()
+    # Verify access to ensure only the owner (or guest for guest sessions) can delete
+    await _verify_session_access(db, session_id, user_id)
+
+    try:
+        await db.messages.delete_many({"session_id": session_id})
+        await db.session_titles.delete_many({"session_id": session_id})
+        await db.feedback.delete_many({"session_id": session_id})
+        await db.escalations.delete_many({"session_id": session_id})
+        logger.info(f"Successfully deleted session {session_id} and all cascading data.")
+    except Exception as e:
+        logger.error(f"Failed to fully delete session {session_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while deleting the conversation."
+        )

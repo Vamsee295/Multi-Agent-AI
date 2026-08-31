@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, X, Send, MessageSquare } from "lucide-react";
+import { Menu, X, Send, MessageSquare, PanelLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useChat } from "@/hooks/useChat";
 import { Sidebar } from "@/components/Sidebar";
@@ -16,11 +16,50 @@ export default function ChatPage() {
   const {
     messages, sendMessage, isSending, activeAgents, error,
     sessionId, sessions, isLoadingSessions, selectSession,
-    startNewChat, handleFeedback,
+    startNewChat, handleFeedback, deleteConversation,
   } = useChat({ isLoggedIn: !!user, isInitialized: authInit });
 
   const [input, setInput] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // sidebarOpen: true by default on desktop, false on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+
+  // Load saved sidebar width and state
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedWidth = localStorage.getItem("sidebar_width");
+      if (savedWidth) {
+        const parsed = parseInt(savedWidth, 10);
+        if (!isNaN(parsed) && parsed >= 200 && parsed <= 480) {
+          setSidebarWidth(parsed);
+        }
+      }
+      const savedOpen = localStorage.getItem("sidebar_open");
+      if (savedOpen !== null) {
+        setSidebarOpen(savedOpen === "true");
+      } else if (window.innerWidth < 768) {
+        setSidebarOpen(false);
+      }
+    }
+  }, []);
+
+  const handleToggleSidebar = () => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sidebar_open", String(next));
+      }
+      return next;
+    });
+  };
+
+  const handleWidthChange = (width: number) => {
+    setSidebarWidth(width);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("sidebar_width", String(width));
+    }
+  };
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -63,15 +102,34 @@ export default function ChatPage() {
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-40`}>
+      {/* Sidebar (Desktop & Mobile) */}
+      <div
+        className={`fixed inset-y-0 left-0 md:relative z-40 h-full flex shrink-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        } transition-transform duration-200 ease-in-out`}
+      >
         <Sidebar
           sessions={sessions}
           currentSessionId={sessionId}
-          onSelectSession={(id) => { selectSession(id); setSidebarOpen(false); }}
-          onNewChat={() => { startNewChat(); setSidebarOpen(false); }}
+          onSelectSession={(id) => {
+            selectSession(id);
+            if (typeof window !== "undefined" && window.innerWidth < 768) {
+              setSidebarOpen(false);
+            }
+          }}
+          onDeleteSession={deleteConversation}
+          onNewChat={() => {
+            startNewChat();
+            if (typeof window !== "undefined" && window.innerWidth < 768) {
+              setSidebarOpen(false);
+            }
+          }}
           onLogout={() => { logout(); router.push("/login"); }}
           isLoading={isLoadingSessions}
+          isOpen={sidebarOpen}
+          onToggleOpen={handleToggleSidebar}
+          width={sidebarWidth}
+          onWidthChange={handleWidthChange}
         />
       </div>
 
@@ -81,11 +139,14 @@ export default function ChatPage() {
         {/* Top bar */}
         <header className="h-14 shrink-0 flex items-center justify-between px-4 bg-white border-b border-[#E4E4E7]">
           <div className="flex items-center gap-3">
+            {/* Sidebar toggle button at top */}
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-1.5 -ml-1.5 rounded text-text-muted hover:text-text-primary hover:bg-[#F4F4F5] transition-colors md:hidden"
+              onClick={handleToggleSidebar}
+              className="p-1.5 -ml-1 rounded-lg text-text-muted hover:text-[#09090B] hover:bg-[#F4F4F5] transition-colors"
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+              aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
-              <Menu size={18} />
+              <PanelLeft size={18} />
             </button>
             <div className="flex items-center gap-2">
               <MessageSquare size={16} className="text-[#09090B]" />
@@ -175,16 +236,6 @@ export default function ChatPage() {
                   <MessageBubble message={msg} onFeedback={handleFeedback} />
                 </div>
               ))}
-
-              {isSending && (
-                <div className="flex justify-start animate-fade-in">
-                  <div className="bg-white border border-border rounded-2xl rounded-tl-md px-4 py-3 flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-text-muted typing-dot" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-text-muted typing-dot" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-text-muted typing-dot" />
-                  </div>
-                </div>
-              )}
 
               <AgentPulseStrip activeAgents={activeAgents} />
               <div ref={bottomRef} />

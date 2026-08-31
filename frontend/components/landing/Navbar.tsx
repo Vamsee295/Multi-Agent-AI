@@ -12,19 +12,25 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 text-[#09090B] hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 bg-[#09090B] rounded-lg flex items-center justify-center">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 bg-[#09090B] rounded-lg flex items-center justify-center transition-transform group-hover:scale-105">
             <LayoutGrid size={15} className="text-white" />
           </div>
-          <span className="text-[15px] font-bold tracking-tight text-[#09090B]">MULTI-AGENT AI</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[15px] font-bold tracking-tight text-[#09090B]">MULTI-AGENT AI</span>
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#FAFAFA] border border-[#E4E4E7]">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[9px] font-bold text-[#71717A] tracking-widest uppercase">Operational</span>
+            </div>
+          </div>
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-8 text-[13px] font-semibold text-[#71717A]">
+        <div className="hidden md:flex items-center gap-8 text-[13px] font-bold text-[#71717A] uppercase tracking-wider">
           <a href="#how-it-works" className="hover:text-[#09090B] transition-colors">How it Works</a>
           <a href="#agents" className="hover:text-[#09090B] transition-colors">Agents</a>
           <a href="#architecture" className="hover:text-[#09090B] transition-colors">Architecture</a>
-          <a href="#tech" className="hover:text-[#09090B] transition-colors">Technology</a>
+          <a href="#tech" className="hover:text-[#09090B] transition-colors">Tech</a>
         </div>
 
         {/* Desktop Actions */}

@@ -35,6 +35,8 @@ def new_message_doc(
     response_time_ms: int = 0,
     sentiment: str = "neutral",
     sentiment_score: float = 0.5,
+    retrieval_time_ms: float = 0.0,
+    chunks_retrieved: int = 0,
 ) -> dict:
     return {
         "session_id": session_id,
@@ -45,6 +47,8 @@ def new_message_doc(
         "response_time_ms": response_time_ms,
         "sentiment": sentiment,
         "sentiment_score": sentiment_score,
+        "retrieval_time_ms": retrieval_time_ms,
+        "chunks_retrieved": chunks_retrieved,
         "timestamp": datetime.now(timezone.utc),
     }
 
