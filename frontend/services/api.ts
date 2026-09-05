@@ -1,10 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { supabase } from "@/lib/supabase/client";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL !== undefined
-    ? process.env.NEXT_PUBLIC_API_BASE_URL
-    : (typeof window !== "undefined" ? "" : "http://localhost:8000");
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
