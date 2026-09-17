@@ -1,7 +1,8 @@
 "use client";
 
-import { LayoutGrid, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { HelpFlowLogo } from "@/components/HelpFlowLogo";
 
 export function AIExperiencePanel() {
   return (
@@ -23,13 +24,8 @@ export function AIExperiencePanel() {
       <div className="relative z-10 w-full max-w-[480px] mx-auto flex flex-col items-start mt-8">
         
         {/* Brand */}
-        <div className="flex items-center gap-3 mb-16">
-          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/10">
-            <LayoutGrid size={18} className="text-white" />
-          </div>
-          <span className="text-[18px] font-semibold tracking-tight text-white">
-            MULTI-AGENT AI
-          </span>
+        <div className="mb-16">
+          <HelpFlowLogo size="lg" dark={true} />
         </div>
         
         {/* Headline */}

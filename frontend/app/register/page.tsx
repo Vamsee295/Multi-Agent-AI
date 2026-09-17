@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Eye, EyeOff, LayoutGrid, ArrowRight, User, CheckCircle2, ArrowLeft, UserCircle2 } from "lucide-react";
+import { HelpFlowLogo } from "@/components/HelpFlowLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 
@@ -20,14 +21,36 @@ export default function RegisterPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "existing">("idle");
   const [emailSent, setEmailSent] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const formName = (formData.get("name") as string) || name;
+    const formEmail = (formData.get("email") as string) || email;
+    const formPassword = (formData.get("password") as string) || password;
+
+    const cleanName = (formName || "").trim();
+    const normalizedEmail = (formEmail || "").trim().toLowerCase();
+    const cleanPassword = formPassword || "";
+
+    if (!cleanName) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!normalizedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+    if (!cleanPassword || cleanPassword.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+
     setStatus("loading");
     
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-      const result = await register(name, normalizedEmail, password);
+      const result = await register(cleanName, normalizedEmail, cleanPassword);
       
       if (result.emailExists) {
         setStatus("existing");
@@ -83,12 +106,7 @@ export default function RegisterPage() {
           >
             <ArrowLeft size={14} /> Back to home
           </Link>
-          <div className="flex items-center gap-2 text-text-primary font-bold tracking-tight text-[16px]">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <LayoutGrid size={14} className="text-white" />
-            </div>
-            MULTI-AGENT AI
-          </div>
+          <HelpFlowLogo size="sm" showWordmark={true} />
         </div>
 
         {/* Register Form Container */}
@@ -171,7 +189,7 @@ export default function RegisterPage() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Name Field */}
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#09090B] mb-2">
+                  <label htmlFor="register-name" className="block text-[13px] font-semibold text-[#09090B] mb-2">
                     Full name
                   </label>
                   <div className="relative group">
@@ -179,7 +197,10 @@ export default function RegisterPage() {
                       <User size={16} strokeWidth={2.5} />
                     </div>
                     <input
+                      id="register-name"
+                      name="name"
                       type="text"
+                      autoComplete="name"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -191,7 +212,7 @@ export default function RegisterPage() {
 
                 {/* Email Field */}
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#09090B] mb-2">
+                  <label htmlFor="register-email" className="block text-[13px] font-semibold text-[#09090B] mb-2">
                     Email address
                   </label>
                   <div className="relative group">
@@ -199,7 +220,10 @@ export default function RegisterPage() {
                       <Mail size={16} strokeWidth={2.5} />
                     </div>
                     <input
+                      id="register-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -211,12 +235,15 @@ export default function RegisterPage() {
 
                 {/* Password Field */}
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#09090B] mb-2">
+                  <label htmlFor="register-password" className="block text-[13px] font-semibold text-[#09090B] mb-2">
                     Password
                   </label>
                   <div className="relative group">
                     <input
+                      id="register-password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
                       required
                       minLength={6}
                       value={password}
@@ -238,7 +265,7 @@ export default function RegisterPage() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={status !== "idle" || !name || !email || !password}
+                  disabled={status !== "idle"}
                   className={`w-full mt-6 rounded-xl h-[46px] text-[14px] font-semibold transition-all flex items-center justify-center gap-2 shadow-sm
                     ${status === "success" 
                       ? "bg-emerald-500 hover:bg-emerald-600 text-white" 

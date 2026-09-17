@@ -11,13 +11,14 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
-from agents.intent_detection import detect_intent
+from agents.intent_detection import detect_intent, IntentResult
 from agents.aggregator import aggregate_responses
 from agents.billing import billing_agent
 from agents.technical import technical_agent
 from agents.product import product_agent
 from agents.complaint import complaint_agent
 from agents.faq import faq_agent
+from escalation.policy import evaluate_escalation
 
 AGENT_REGISTRY = {
     "billing": billing_agent,
@@ -27,7 +28,7 @@ AGENT_REGISTRY = {
     "faq": faq_agent,
 }
 
-ESCALATION_CONFIDENCE_THRESHOLD = 0.45
+ESCALATION_CONFIDENCE_THRESHOLD = 0.45  # kept for backward-compat references
 
 
 @dataclass
@@ -42,6 +43,11 @@ class RoutedResponse:
     response_time_ms: int
     retrieval_time_ms: float = 0.0
     chunks_retrieved: int = 0
+    # Deterministic escalation decision (from escalation.policy).
+    escalation_reason: str = ""
+    escalation_source: str = ""
+    escalation_priority: str = ""
+    escalation_category: str = ""
 
 
 def _run_agents_parallel(
@@ -73,6 +79,7 @@ def _run_agents_parallel(
 def route_and_respond(
     message: str,
     history_snippet: str = "",
+    history_turns: list = None,
     use_rag: bool = True,
     model: str = None,
     response_style: str = "balanced",
@@ -87,6 +94,12 @@ def route_and_respond(
         confidence = 1.0
         sentiment = "neutral"
         sentiment_score = 0.5
+        intent = IntentResult(
+            agents=invoked_agents,
+            confidence=confidence,
+            sentiment=sentiment,
+            sentiment_score=sentiment_score,
+        )
     else:
         intent = detect_intent(message)
         agents_to_run = [AGENT_REGISTRY[name] for name in intent.agents if name in AGENT_REGISTRY]
@@ -113,19 +126,15 @@ def route_and_respond(
     total_retrieval_time_ms = round(sum(r.retrieval_time_ms for r in replies), 2)
     total_chunks_retrieved = sum(r.chunks_count for r in replies)
 
-    # Escalate if: complaint agent active, or low confidence, or negative sentiment
-    escalated = (
-        "complaint" in invoked_agents
-        and confidence < 0.8
-    ) or confidence < ESCALATION_CONFIDENCE_THRESHOLD or (
-        sentiment in ("frustrated", "angry") and confidence < 0.75
+    # Delegated, deterministic escalation policy (no LLM in the decision path).
+    decision = evaluate_escalation(
+        message=message,
+        intent=intent,
+        routed_context=all_context,
+        history_turns=history_turns,
+        rag_enabled=use_rag,
     )
-
-    if escalated:
-        final_message += (
-            "\n\n_This conversation has been flagged for review by a human agent "
-            "to ensure it's fully resolved._"
-        )
+    escalated = decision.should_escalate
 
     elapsed_ms = int((time.monotonic() - t_start) * 1000)
 
@@ -140,4 +149,8 @@ def route_and_respond(
         response_time_ms=elapsed_ms,
         retrieval_time_ms=total_retrieval_time_ms,
         chunks_retrieved=total_chunks_retrieved,
+        escalation_reason=decision.reason or "",
+        escalation_source=decision.source or "",
+        escalation_priority=decision.priority or "",
+        escalation_category=decision.category or "",
     )

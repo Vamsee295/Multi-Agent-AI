@@ -98,18 +98,23 @@ class MockCollection:
         doc = await self.find_one(query)
         if not doc:
             return None
-        
-        # Apply $set update
+
         if "$set" in update:
             for k, v in update["$set"].items():
                 doc[k] = copy.deepcopy(v)
-                
+        if "$push" in update:
+            for k, v in update["$push"].items():
+                doc.setdefault(k, []).append(copy.deepcopy(v))
+        if "$unset" in update:
+            for k in update["$unset"]:
+                doc.pop(k, None)
+
         # Update the document inside self.docs list too
         for idx, d in enumerate(self.docs):
             if str(d.get("_id")) == str(doc.get("_id")):
                 self.docs[idx] = copy.deepcopy(doc)
                 break
-                
+
         self.parent_db.save()
         return doc
 
@@ -117,6 +122,13 @@ class MockCollection:
         for k, v in query.items():
             if k == "_id":
                 if str(doc.get("_id")) != str(v):
+                    return False
+            elif isinstance(v, dict) and any(op in v for op in ("$in", "$nin", "$ne")):
+                if "$in" in v and doc.get(k) not in v["$in"]:
+                    return False
+                if "$nin" in v and doc.get(k) in v["$nin"]:
+                    return False
+                if "$ne" in v and doc.get(k) == v["$ne"]:
                     return False
             elif doc.get(k) != v:
                 return False
@@ -238,6 +250,7 @@ class MockDatabase:
         self.escalations = MockCollection("escalations", self)
         self.feedback = MockCollection("feedback", self)
         self.session_titles = MockCollection("session_titles", self)
+        self.conversation_ownership = MockCollection("conversation_ownership", self)
         self.load()
 
     def save(self):
@@ -248,6 +261,7 @@ class MockDatabase:
                 "escalations": self.escalations.docs,
                 "feedback": self.feedback.docs,
                 "session_titles": self.session_titles.docs,
+                "conversation_ownership": self.conversation_ownership.docs,
             }
             with open(DB_CACHE_FILE, "w", encoding="utf-8") as f:
                 json.dump(data, f, default=_json_serial, indent=2)
@@ -264,6 +278,7 @@ class MockDatabase:
                 self.escalations.docs = [_deserialize_doc(d) for d in data.get("escalations", [])]
                 self.feedback.docs = [_deserialize_doc(d) for d in data.get("feedback", [])]
                 self.session_titles.docs = [_deserialize_doc(d) for d in data.get("session_titles", [])]
+                self.conversation_ownership.docs = [_deserialize_doc(d) for d in data.get("conversation_ownership", [])]
             except Exception as e:
                 print(f"[MockDB] Warning: Failed to load cache: {e}")
         
@@ -274,13 +289,14 @@ class MockDatabase:
         default_pwd_hash = "legacy_seed_hash_not_used"
         
         seed_accounts = [
-            {"email": "student@gmail.com", "name": "Student User"},
-            {"email": "demo@techmart.com", "name": "Demo User"},
-            {"email": "admin@techmart.com", "name": "Admin User"},
-            {"email": "you@company.com", "name": "Test User"},
-            {"email": "test@company.com", "name": "Test User"},
+            {"email": "student@gmail.com", "name": "Student User", "role": "user"},
+            {"email": "demo@helpflow.com", "name": "Demo User", "role": "user"},
+            {"email": "support@helpflow.com", "name": "Support Agent", "role": "support"},
+            {"email": "admin@helpflow.com", "name": "Admin User", "role": "admin"},
+            {"email": "you@company.com", "name": "Test User", "role": "user"},
+            {"email": "test@company.com", "name": "Test User", "role": "user"},
         ]
-        
+
         existing_emails = {u.get("email") for u in self.users.docs}
         changed = False
         for acc in seed_accounts:
@@ -289,6 +305,7 @@ class MockDatabase:
                     "_id": ObjectId(),
                     "email": acc["email"],
                     "name": acc["name"],
+                    "role": acc["role"],
                     "hashed_password": default_pwd_hash,
                     "created_at": datetime.now(timezone.utc),
                     "is_active": True,
@@ -320,17 +337,24 @@ def get_db():
 
 async def ping() -> bool:
     global _use_mock_db, _mock_db
+    settings = get_settings()
     try:
         await get_client().admin.command("ping")
         _use_mock_db = False
         return True
-    except Exception:
+    except Exception as exc:
         import sys
-        print("\n=== [DATABASE] MongoDB offline. Active with Persistent File Storage (.mock_db_store.json) ===\n", file=sys.stderr)
-        _use_mock_db = True
-        if _mock_db is None:
-            _mock_db = MockDatabase()
-        return False
+        is_prod = settings.ENV == "production"
+        if is_prod:
+            print(f"\n[CRITICAL DATABASE ERROR] Failed to connect to MongoDB Atlas in production: {exc}\n", file=sys.stderr)
+            _use_mock_db = False
+            return False
+        else:
+            print(f"\n=== [DATABASE] MongoDB local/cloud unreachable ({exc}). Active with Local Dev Storage (.mock_db_store.json) ===\n", file=sys.stderr)
+            _use_mock_db = True
+            if _mock_db is None:
+                _mock_db = MockDatabase()
+            return False
 
 
 async def ensure_indexes() -> None:
@@ -341,3 +365,8 @@ async def ensure_indexes() -> None:
     await db.messages.create_index([("user_id", 1), ("timestamp", -1)])
     await db.escalations.create_index("session_id")
     await db.escalations.create_index([("status", 1), ("created_at", -1)])
+    await db.escalations.create_index([("user_id", 1), ("created_at", -1)])
+    await db.escalations.create_index([("session_id", 1), ("status", 1)])
+    await db.escalations.create_index([("priority", 1), ("status", 1)])
+    await db.escalations.create_index([("assigned_agent", 1), ("status", 1)])
+    await db.conversation_ownership.create_index("session_id", unique=True)

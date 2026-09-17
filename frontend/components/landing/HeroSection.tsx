@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ScrollReveal } from "./ScrollReveal";
 
 export function HeroSection() {
   return (
@@ -10,62 +9,46 @@ export function HeroSection() {
       <div className="max-w-7xl mx-auto px-6 relative z-10 flex flex-col items-center text-center">
         
         {/* Eyebrow */}
-        <ScrollReveal delay={100} direction="down">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F4F4F5] border border-[#E4E4E7] text-[#09090B] font-medium text-[12px] tracking-widest uppercase mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#09090B] animate-pulse" />
-            AUTONOMOUS AI ORCHESTRATION
-          </div>
-        </ScrollReveal>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F4F4F5] border border-[#E4E4E7] text-[#09090B] font-medium text-[12px] tracking-widest uppercase mb-8">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#09090B] animate-pulse" />
+          AUTONOMOUS AI ORCHESTRATION
+        </div>
 
         {/* Headline */}
-        <ScrollReveal delay={200} direction="up">
-          <h1 className="text-[42px] sm:text-[56px] lg:text-[72px] font-bold text-[#09090B] tracking-tight leading-[1.05] mb-8 max-w-4xl">
-            AI agents that <br className="hidden sm:block" />
-            <span className="text-[#09090B]">think, act, and adapt.</span>
-          </h1>
-        </ScrollReveal>
+        <h1 className="text-[42px] sm:text-[56px] lg:text-[72px] font-bold text-[#09090B] tracking-tight leading-[1.05] mb-8 max-w-4xl">
+          AI agents that <br className="hidden sm:block" />
+          <span className="text-[#09090B]">think, act, and adapt.</span>
+        </h1>
 
         {/* Subtitle */}
-        <ScrollReveal delay={300} direction="up">
-          <p className="text-[16px] sm:text-[18px] text-[#71717A] max-w-2xl leading-relaxed mb-12 font-medium">
-            Multi-Agent AI coordinates specialized agents to observe intent, retrieve knowledge, execute domain tasks, and adapt to complex customer support workflows autonomously.
-          </p>
-        </ScrollReveal>
+        <p className="text-[16px] sm:text-[18px] text-[#71717A] max-w-2xl leading-relaxed mb-12 font-medium">
+          HelpFlow coordinates specialized agents to observe intent, retrieve knowledge, execute domain tasks, and adapt to complex customer support workflows autonomously.
+        </p>
 
         {/* Actions */}
-        <ScrollReveal delay={400} direction="up">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <Link 
-              href="/register" 
-              className="w-full sm:w-auto px-8 py-4 bg-[#09090B] text-white text-[14px] font-semibold rounded-xl hover:bg-[#27272A] transition-all flex items-center justify-center gap-2 shadow-sm"
-            >
-              START ORCHESTRATING <ArrowRight size={16} />
-            </Link>
-            <a 
-              href="#architecture" 
-              className="w-full sm:w-auto px-8 py-4 bg-white text-[#09090B] border border-[#E4E4E7] text-[14px] font-semibold rounded-xl hover:bg-[#F4F4F5] transition-all flex items-center justify-center"
-            >
-              EXPLORE ARCHITECTURE
-            </a>
-          </div>
-        </ScrollReveal>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <Link 
+            href="/register" 
+            className="w-full sm:w-auto px-8 py-4 bg-[#09090B] text-white text-[14px] font-semibold rounded-xl hover:bg-[#27272A] transition-all flex items-center justify-center gap-2 shadow-sm"
+          >
+            START ORCHESTRATING <ArrowRight size={16} />
+          </Link>
+          <a 
+            href="#architecture" 
+            className="w-full sm:w-auto px-8 py-4 bg-white text-[#09090B] border border-[#E4E4E7] text-[14px] font-semibold rounded-xl hover:bg-[#F4F4F5] transition-all flex items-center justify-center"
+          >
+            EXPLORE ARCHITECTURE
+          </a>
+        </div>
 
         {/* Minimalist Architectural Visual */}
-        <ScrollReveal delay={500} direction="up" className="w-full max-w-4xl">
-          <div className="mt-20 relative w-full h-[400px]">
+        <div className="w-full max-w-4xl">
+          <div className="mt-12 sm:mt-20 relative w-full h-[260px] sm:h-[340px] md:h-[400px]">
             {/* Decorative faint background grid */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
 
             {/* Diagram Lines & Nodes */}
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-              
-              <defs>
-                {/* Glow filter for active nodes */}
-                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
+            <svg className="absolute inset-0 w-full h-full will-change-transform" viewBox="0 0 800 400" fill="none" xmlns="http://www.w3.org/2000/svg">
 
               {/* LINES & PARTICLES */}
               {/* 1 to 2 */}
@@ -115,7 +98,7 @@ export function HeroSection() {
 
               {/* 2. Observe */}
               <g className="group cursor-pointer">
-                <rect x="310" y="70" width="180" height="32" rx="6" className="fill-white stroke-[#09090B] transition-all duration-300" strokeWidth="1.5" filter="url(#glow)" />
+                <rect x="310" y="70" width="180" height="32" rx="6" className="fill-white stroke-[#09090B] transition-all duration-300 shadow-sm" strokeWidth="1.5" />
                 <text x="400" y="90" className="fill-[#09090B] text-[10px] font-bold tracking-wider" textAnchor="middle">OBSERVE (Intent &amp; Sentiment)</text>
               </g>
 
@@ -149,7 +132,7 @@ export function HeroSection() {
 
             </svg>
           </div>
-        </ScrollReveal>
+        </div>
       </div>
     </section>
   );

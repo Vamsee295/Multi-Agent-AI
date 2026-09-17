@@ -1,4 +1,4 @@
-TechMart Electronics - Product Catalog
+HelpFlow Electronics - Product Catalog
 
 SmartHub Pro (Model TM-SH100)
 - Wi-Fi 6 smart home hub, supports up to 64 devices
@@ -21,4 +21,4 @@ CloudCam 360 (Model TM-CC50)
 - Availability: In stock
 
 All products include a 12-month manufacturer warranty. Premium Plan
-subscribers receive an extended 24-month warranty on all TechMart devices.
+subscribers receive an extended 24-month warranty on all HelpFlow devices.

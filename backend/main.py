@@ -41,6 +41,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Parse allowed origins with defaults for local development
 configured_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
 default_dev_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"]
@@ -76,9 +77,13 @@ async def health():
     elif settings.LLM_PROVIDER == "gemini":
         llm_model = "gemini-1.5-flash"
 
+    is_healthy = db_ok or (settings.ENV != "production")
+
     return {
-        "status": "ok",
+        "status": "ok" if is_healthy else "degraded",
         "database_connected": db_ok,
+        "database_storage": "mongodb" if db_ok else ("mock_db_store" if settings.ENV != "production" else "disconnected"),
+        "environment": settings.ENV,
         "knowledge_base_chunks_indexed": getattr(app.state, "chunks_indexed", 0),
         "llm_provider": settings.LLM_PROVIDER,
         "llm_model": llm_model,

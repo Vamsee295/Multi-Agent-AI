@@ -65,6 +65,9 @@ class IntentResult:
     confidence: float
     sentiment: str = "neutral"
     sentiment_score: float = 0.5
+    # Deterministic user-utterance flags (set by the escalation policy; never LLM).
+    human_requested: bool = False
+    high_risk: bool = False
 
 
 def _detect_sentiment_keywords(message: str) -> tuple[str, float]:
@@ -95,6 +98,7 @@ def _detect_intent_keywords(message: str) -> IntentResult:
         confidence = min(0.95, 0.5 + 0.15 * max_hits)
 
     sentiment, sentiment_score = _detect_sentiment_keywords(message)
+    flags = _detect_user_flags(message)
 
     # Frustrated/angry → always co-invoke complaint agent
     if sentiment in ("frustrated", "angry") and "complaint" not in agents:
@@ -105,7 +109,17 @@ def _detect_intent_keywords(message: str) -> IntentResult:
         confidence=round(confidence, 2),
         sentiment=sentiment,
         sentiment_score=sentiment_score,
+        human_requested=flags["human_requested"],
+        high_risk=flags["high_risk"],
     )
+
+
+def _detect_user_flags(message: str) -> dict[str, bool]:
+    from escalation.policy import user_flags
+    try:
+        return user_flags(message)
+    except Exception:
+        return {"human_requested": False, "high_risk": False}
 
 
 def _detect_sentiment_llm(message: str) -> tuple[str, float]:
@@ -132,6 +146,7 @@ def _detect_intent_llm(message: str) -> IntentResult:
     confidence = max(0.0, min(1.0, confidence))
 
     sentiment, sentiment_score = _detect_sentiment_llm(message)
+    flags = _detect_user_flags(message)
 
     if sentiment in ("frustrated", "angry") and "complaint" not in agents:
         agents.append("complaint")
@@ -141,6 +156,8 @@ def _detect_intent_llm(message: str) -> IntentResult:
         confidence=round(confidence, 2),
         sentiment=sentiment,
         sentiment_score=sentiment_score,
+        human_requested=flags["human_requested"],
+        high_risk=flags["high_risk"],
     )
 
 

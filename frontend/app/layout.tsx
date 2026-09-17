@@ -3,8 +3,16 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "TechMart Support | Multi-Agent AI Assistant",
+  title: "HelpFlow | Autonomous Multi-Agent Support Platform",
   description: "Enterprise AI-powered customer support with specialized billing, technical, product, complaint, and FAQ agents.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" }
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
+        <link rel="stylesheet" href="/styles.css" />
       </head>
       <body className="font-sans antialiased bg-canvas text-text-primary selection:bg-brand-subtle selection:text-brand">
         <AuthProvider>{children}</AuthProvider>

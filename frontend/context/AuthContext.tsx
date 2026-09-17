@@ -3,10 +3,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
-import { UserPublic } from "@/services/api";
+import { UserPublic, fetchMe } from "@/services/api";
 
-const GUEST_KEY = "techmart_guest";
-const SESSION_STORAGE_KEY = "techmart_session_id";
+const GUEST_KEY = "helpflow_guest";
+const SESSION_STORAGE_KEY = "helpflow_session_id";
 
 export interface LoginResult {
   success: boolean;
@@ -31,6 +31,7 @@ export interface AuthContextType {
   isInitialized: boolean;
   loading: boolean;
   error: string | null;
+  role: string | null;
   login: (email: string, password: string) => Promise<LoginResult>;
   register: (name: string, email: string, password: string) => Promise<RegisterResult>;
   verifyEmailOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
@@ -97,6 +98,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+
+  // Fetch the user's role from the backend (source of truth: MongoDB users.role)
+  const refreshRole = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    try {
+      const me = await fetchMe();
+      setRole(me.role || "user");
+    } catch (err) {
+      // Non-critical: role is used only for role-gated navigation.
+      console.warn("Could not fetch user role:", err);
+      setRole(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (session && !isGuest) refreshRole();
+    else setRole(null);
+  }, [session, isGuest, refreshRole]);
 
   // Initialize Auth state on mount
   useEffect(() => {
@@ -381,6 +401,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isInitialized,
       loading,
       error,
+      role,
       login,
       register,
       verifyEmailOtp,
@@ -399,6 +420,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isInitialized,
       loading,
       error,
+      role,
       login,
       register,
       verifyEmailOtp,

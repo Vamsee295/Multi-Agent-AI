@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
     try {
       const [a, t, s, h] = await Promise.all([
         fetchAnalytics(), 
-        fetchTickets("open"),
+        fetchTickets("active"),
         fetchSessions(),
         checkHealth().catch(() => null)
       ]);

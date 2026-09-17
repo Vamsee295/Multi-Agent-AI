@@ -14,6 +14,7 @@ from models.schemas import (
     ChatRequest,
     ChatResponse,
     RetrievedChunk,
+    EscalationDetail,
     ConversationHistory,
     ConversationTurn,
     SessionSummary,
@@ -22,7 +23,7 @@ from models.schemas import (
     SummarizeResponse,
     SessionTitleResponse,
 )
-from models.user import new_message_doc, new_escalation_doc, new_feedback_doc
+from models.user import new_message_doc, new_feedback_doc
 from agents.router import route_and_respond
 from agents.llm_client import generate
 from agents.prompts import (
@@ -31,7 +32,15 @@ from agents.prompts import (
     build_summarizer_user_prompt,
     build_title_user_prompt,
 )
+from escalation.service import escalation_service
+from escalation.handoff import get_conversation_mode
 from auth.security import get_current_user_id, decode_access_token
+
+HANDOFF_NOTICE = (
+    "This conversation is currently handled by our human support team. "
+    "A support agent will respond here shortly. The automated assistant has "
+    "paused so they can take over."
+)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -46,11 +55,15 @@ async def _optional_user_id(authorization: Optional[str] = Header(default=None))
         return None
 
 
+async def _load_history_turns(db, session_id: str) -> list[dict]:
+    cursor = db.messages.find({"session_id": session_id}).sort("timestamp", 1)
+    return [{"role": doc.get("role", "user"), "content": doc.get("content", "")} async for doc in cursor]
+
+
 async def _build_history_snippet(db, session_id: str) -> str:
     from agents.memory import build_history_snippet
 
-    cursor = db.messages.find({"session_id": session_id}).sort("timestamp", 1)
-    turns = [{"role": doc["role"], "content": doc["content"]} async for doc in cursor]
+    turns = await _load_history_turns(db, session_id)
     return build_history_snippet(turns)
 
 
@@ -140,6 +153,72 @@ async def list_sessions(user_id: str = Depends(get_current_user_id)):
 
 # ── Send message ──────────────────────────────────────────────────────────────
 
+async def _escalate_or_notify_failure(db, session_id, user_id, message, routed, assistant_id, base_content):
+    """Create the escalation ticket for a flagged turn.
+
+    On success: returns clean ticket confirmation and structured escalation details.
+    On failure: returns honest failure notice — never claims a ticket was created.
+    Returns (final_message, escalation_details).
+    """
+    escalation_details = None
+    try:
+        doc, _created = await escalation_service.create_escalation(
+            db,
+            session_id=session_id,
+            user_id=user_id,
+            trigger_message=message,
+            agents_invoked=routed.agents_invoked,
+            intent_confidence=routed.intent_confidence,
+            reason=routed.escalation_reason or "OTHER",
+            source=routed.escalation_source or "AI",
+            priority=routed.escalation_priority or None,
+            category=routed.escalation_category or None,
+        )
+        escalation_details = EscalationDetail(
+            ticket_id=doc["ticket_id"],
+            reason=doc.get("reason", "OTHER"),
+            source=doc.get("source", "AI"),
+            priority=doc.get("priority", "MEDIUM"),
+            status=doc.get("status", "PENDING_HUMAN"),
+            assigned_team=doc.get("assigned_team", "Customer Success"),
+            ai_summary=doc.get("ai_summary"),
+            category=doc.get("category"),
+            created_at=doc["created_at"],
+        )
+        if routed.escalation_reason == "USER_REQUESTED_HUMAN":
+            final_message = (
+                f"Your conversation has been escalated to human support. "
+                f"Ticket **{doc['ticket_id']}** has been created and assigned to "
+                f"{doc.get('assigned_team', 'Customer Success')}. A support specialist "
+                f"will review your case and respond here shortly."
+            )
+        else:
+            confirmation = (
+                f"\n\n_Your conversation has been escalated to human support. "
+                f"Ticket **{doc['ticket_id']}** has been created._"
+            )
+            final_message = base_content + confirmation
+    except Exception:
+        if routed.escalation_reason == "USER_REQUESTED_HUMAN":
+            final_message = (
+                "Something went wrong while creating the escalation ticket due to a system error. "
+                "Please try again in a moment."
+            )
+        else:
+            final_message = (
+                base_content + "\n\n_Something went wrong while creating the escalation. Please try again._"
+            )
+
+    try:
+        await db.messages.find_one_and_update(
+            {"_id": assistant_id},
+            {"$set": {"content": final_message}},
+        )
+    except Exception:
+        pass
+    return final_message, escalation_details
+
+
 @router.post("", response_model=ChatResponse)
 async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_optional_user_id)):
     db = get_db()
@@ -148,16 +227,41 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
     if payload.session_id:
         await _verify_session_access(db, session_id, user_id)
 
+    # Conversation ownership: when a human owns the session, the AI stops
+    # auto-answering. The customer's message is still stored in the thread.
+    conversation_mode = await get_conversation_mode(db, session_id)
+    is_human_owned = conversation_mode == "HUMAN"
+
+    history_turns = []
+    if payload.use_memory:
+        history_turns = await _load_history_turns(db, session_id)
+
+    await db.messages.insert_one(new_message_doc(session_id, user_id, "user", payload.message, []))
+
+    if is_human_owned:
+        await escalation_service.notify_customer_message(db, session_id, payload.message)
+        return ChatResponse(
+            session_id=session_id,
+            message=HANDOFF_NOTICE,
+            agents_invoked=[],
+            intent_confidence=0.0,
+            retrieved_context=[],
+            escalated=False,
+            conversation_mode="HUMAN",
+            sentiment="neutral",
+            sentiment_score=0.5,
+            created_at=datetime.now(timezone.utc),
+        )
+
     history_snippet = ""
     if payload.use_memory:
         history_snippet = await _build_history_snippet(db, session_id)
-
-    await db.messages.insert_one(new_message_doc(session_id, user_id, "user", payload.message, []))
 
     try:
         routed = route_and_respond(
             message=payload.message,
             history_snippet=history_snippet,
+            history_turns=history_turns,
             use_rag=True if payload.use_rag is None else payload.use_rag,
             model=payload.model,
             response_style=payload.response_style or "balanced",
@@ -170,7 +274,7 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
             detail=f"Support assistant failed to generate a response: {exc}",
         ) from exc
 
-    await db.messages.insert_one(
+    assistant_result = await db.messages.insert_one(
         new_message_doc(
             session_id, user_id, "assistant",
             routed.final_message, routed.agents_invoked,
@@ -181,22 +285,14 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
             chunks_retrieved=routed.chunks_retrieved,
         )
     )
+    assistant_id = assistant_result.inserted_id
 
+    final_message = routed.final_message
     escalation_details = None
     if routed.escalated:
-        escalation_doc = new_escalation_doc(
-            session_id=session_id,
-            user_id=user_id,
-            trigger_message=payload.message,
-            agents_invoked=routed.agents_invoked,
-            intent_confidence=routed.intent_confidence,
+        final_message, escalation_details = await _escalate_or_notify_failure(
+            db, session_id, user_id, payload.message, routed, assistant_id, routed.final_message
         )
-        await db.escalations.insert_one(escalation_doc)
-        escalation_details = {
-            "ticket_id": escalation_doc["ticket_id"],
-            "priority": escalation_doc["priority"],
-            "assigned_team": escalation_doc["assigned_team"],
-        }
 
     # Auto-generate a session title from the first user message
     try:
@@ -215,7 +311,7 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
 
     return ChatResponse(
         session_id=session_id,
-        message=routed.final_message,
+        message=final_message,
         agents_invoked=routed.agents_invoked,
         intent_confidence=routed.intent_confidence,
         retrieved_context=[
@@ -228,6 +324,7 @@ async def send_message(payload: ChatRequest, user_id: Optional[str] = Depends(_o
         sentiment_score=routed.sentiment_score,
         response_time_ms=routed.response_time_ms,
         created_at=datetime.now(timezone.utc),
+        conversation_mode=conversation_mode,
     )
 
 

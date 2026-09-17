@@ -19,15 +19,23 @@ export function ScrollReveal({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // If IntersectionObserver is not supported, reveal immediately
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
-          observer.unobserve(entry.target);
+          if (ref.current) {
+            observer.unobserve(ref.current);
+          }
         }
       },
       {
-        threshold: 0.15,
+        threshold: 0.1,
         rootMargin: "0px 0px -40px 0px",
       }
     );
@@ -73,3 +81,5 @@ export function ScrollReveal({
     </div>
   );
 }
+
+

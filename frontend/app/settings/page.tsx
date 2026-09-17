@@ -24,6 +24,8 @@ export default function SettingsPage() {
 
   // Change Password Modal State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordStep, setPasswordStep] = useState<1 | 2>(1);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -89,13 +91,95 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handleOpenPasswordModal = () => {
+    setPasswordStep(1);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+    setPasswordSuccess(false);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleClosePasswordModal = () => {
+    if (passwordLoading) return;
+    setIsPasswordModalOpen(false);
+    setPasswordStep(1);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+    setPasswordSuccess(false);
+  };
+
+  const handleBackToStep1 = () => {
+    if (passwordLoading) return;
+    setPasswordStep(1);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+  };
+
+  // Step 1: Verify current password against Supabase Auth
+  const handleVerifyCurrentPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
-    if (newPassword.length < 8) {
+
+    if (!user?.email) {
+      setPasswordError("Your session has expired. Please sign in again.");
+      return;
+    }
+
+    const trimmedPassword = currentPassword;
+    if (!trimmedPassword) {
+      setPasswordError("Please enter your current password.");
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      // Verify against authenticated Supabase account credentials
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: user.email.trim().toLowerCase(),
+        password: trimmedPassword,
+      });
+
+      if (error) {
+        setPasswordError("Current password is incorrect.");
+        return;
+      }
+
+      if (!data.session && !data.user) {
+        setPasswordError("Current password is incorrect.");
+        return;
+      }
+
+      // Password verified successfully! Proceed to Step 2
+      setPasswordStep(2);
+      setPasswordError(null);
+    } catch (err: any) {
+      setPasswordError("Current password is incorrect.");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // Step 2: Set new password and update in Supabase
+  const handleUpdateNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (passwordStep !== 2) {
+      setPasswordError("Please verify your current password first.");
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 8) {
       setPasswordError("Password must be at least 8 characters long.");
       return;
     }
+
     if (newPassword !== confirmPassword) {
       setPasswordError("Passwords do not match.");
       return;
@@ -104,13 +188,19 @@ export default function SettingsPage() {
     try {
       setPasswordLoading(true);
       const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      if (error) {
+        setPasswordError(error.message || "Failed to update password.");
+        return;
+      }
+
       setPasswordSuccess(true);
+      // Clear sensitive password strings from memory immediately
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
       setTimeout(() => {
-        setIsPasswordModalOpen(false);
-        setPasswordSuccess(false);
-        setNewPassword("");
-        setConfirmPassword("");
+        handleClosePasswordModal();
       }, 1500);
     } catch (err: any) {
       setPasswordError(err.message || "Failed to update password.");
@@ -284,7 +374,7 @@ export default function SettingsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsPasswordModalOpen(true)}
+                onClick={handleOpenPasswordModal}
                 className="text-[12px] font-semibold text-zinc-800 bg-white hover:bg-zinc-50 border border-border px-3 py-1.5 rounded-md transition-colors cursor-pointer shadow-2xs"
               >
                 Change password
@@ -319,22 +409,6 @@ export default function SettingsPage() {
           </div>
           <div className="bg-white border border-border rounded-xl p-5 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-              <div>
-                <span className="text-[14px] font-medium text-zinc-900 block">Default model</span>
-                <span className="text-[12px] text-text-muted">Inference model used for agent task execution</span>
-              </div>
-              <select
-                value={settings.model}
-                onChange={(e) => updateSetting("model", e.target.value)}
-                className="border border-border rounded-md px-3 py-1.5 text-[13px] bg-zinc-50 outline-none focus:ring-1 focus:ring-brand font-mono"
-              >
-                <option value="openai/gpt-oss-120b">Groq / llama-3.3-70b (Default)</option>
-                <option value="llama-3.1-8b-instant">Groq / llama-3.1-8b-instant</option>
-                <option value="mixtral-8x7b-32768">Groq / mixtral-8x7b-32768</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2 border-t border-border">
               <div>
                 <span className="text-[14px] font-medium text-zinc-900 block">Response style</span>
                 <span className="text-[12px] text-text-muted">Controls conciseness and detail level of responses</span>
@@ -583,11 +657,33 @@ export default function SettingsPage() {
       {isPasswordModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white border border-border rounded-xl max-w-md w-full p-6 shadow-xl relative">
-            <h3 className="text-[18px] font-bold text-zinc-900 mb-1 flex items-center gap-2">
-              <KeyRound size={18} /> Change Password
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 bg-zinc-100 rounded-lg text-zinc-700">
+                  <KeyRound size={18} />
+                </span>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+                    {passwordStep === 1 ? "STEP 1 OF 2" : "STEP 2 OF 2"}
+                  </span>
+                  <span className="text-[12px] font-medium text-zinc-700">
+                    {passwordStep === 1 ? "Verify current password" : "Set new password"}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${passwordStep === 1 ? "bg-black" : "bg-zinc-300"}`} />
+                <span className={`w-2 h-2 rounded-full ${passwordStep === 2 ? "bg-black" : "bg-zinc-300"}`} />
+              </div>
+            </div>
+
+            <h3 className="text-[18px] font-bold text-zinc-900 mb-1">
+              {passwordStep === 1 ? "Verify Current Password" : "Set New Password"}
             </h3>
             <p className="text-[13px] text-text-secondary mb-5">
-              Enter your new password below. It will update your Supabase account.
+              {passwordStep === 1
+                ? "Enter your current password to verify your identity before setting a new password."
+                : "Enter your new password below. It will update your Supabase account."}
             </p>
 
             {passwordError && (
@@ -600,57 +696,126 @@ export default function SettingsPage() {
             {passwordSuccess && (
               <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 px-3.5 py-2.5 rounded-lg text-[13px] flex items-center gap-2">
                 <Check size={15} className="shrink-0" />
-                <span>Password updated successfully!</span>
+                <span>Password updated successfully.</span>
               </div>
             )}
 
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div>
-                <label className="block text-[12px] font-semibold text-zinc-700 mb-1">
-                  New Password (min 8 chars)
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full px-3 py-2 text-[14px] border border-border rounded-lg focus:ring-1 focus:ring-brand focus:border-brand outline-none"
-                />
-              </div>
+            {passwordStep === 1 ? (
+              <form onSubmit={handleVerifyCurrentPassword} className="space-y-4">
+                <div>
+                  <label className="block text-[12px] font-semibold text-zinc-700 mb-1">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter your current password"
+                    required
+                    autoFocus
+                    disabled={passwordLoading}
+                    className="w-full px-3 py-2 text-[14px] border border-border rounded-lg focus:ring-1 focus:ring-brand focus:border-brand outline-none disabled:opacity-50"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-[12px] font-semibold text-zinc-700 mb-1">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full px-3 py-2 text-[14px] border border-border rounded-lg focus:ring-1 focus:ring-brand focus:border-brand outline-none"
-                />
-              </div>
+                <div className="flex items-center justify-end gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={handleClosePasswordModal}
+                    disabled={passwordLoading}
+                    className="px-4 py-2 text-[13px] font-medium text-zinc-600 hover:text-zinc-900 cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={passwordLoading || !currentPassword}
+                    className="bg-black hover:bg-zinc-800 text-white font-semibold text-[13px] px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {passwordLoading ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      "Verify Password"
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleUpdateNewPassword} className="space-y-4">
+                <div>
+                  <label className="block text-[12px] font-semibold text-zinc-700 mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    required
+                    minLength={8}
+                    autoFocus
+                    disabled={passwordLoading || passwordSuccess}
+                    className="w-full px-3 py-2 text-[14px] border border-border rounded-lg focus:ring-1 focus:ring-brand focus:border-brand outline-none disabled:opacity-50"
+                  />
+                  <p className="text-[11px] text-text-muted mt-1">Minimum 8 characters</p>
+                </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsPasswordModalOpen(false)}
-                  disabled={passwordLoading}
-                  className="px-4 py-2 text-[13px] font-medium text-zinc-600 hover:text-zinc-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="bg-black hover:bg-zinc-800 text-white font-semibold text-[13px] px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {passwordLoading ? "Updating..." : "Update Password"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="block text-[12px] font-semibold text-zinc-700 mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    required
+                    minLength={8}
+                    disabled={passwordLoading || passwordSuccess}
+                    className="w-full px-3 py-2 text-[14px] border border-border rounded-lg focus:ring-1 focus:ring-brand focus:border-brand outline-none disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-3">
+                  <button
+                    type="button"
+                    onClick={handleBackToStep1}
+                    disabled={passwordLoading || passwordSuccess}
+                    className="px-3 py-2 text-[13px] font-medium text-zinc-600 hover:text-zinc-900 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <ArrowLeft size={14} />
+                    <span>Back</span>
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleClosePasswordModal}
+                      disabled={passwordLoading || passwordSuccess}
+                      className="px-4 py-2 text-[13px] font-medium text-zinc-600 hover:text-zinc-900 cursor-pointer disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={passwordLoading || passwordSuccess || !newPassword || !confirmPassword}
+                      className="bg-black hover:bg-zinc-800 text-white font-semibold text-[13px] px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {passwordLoading ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          <span>Updating...</span>
+                        </>
+                      ) : (
+                        "Update Password"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

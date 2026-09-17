@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LayoutGrid, ArrowRight, ArrowLeft, RotateCcw, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { HelpFlowLogo } from "@/components/HelpFlowLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 
@@ -202,12 +203,7 @@ export default function VerifyEmailPage() {
           >
             <ArrowLeft size={14} /> Back to signup
           </Link>
-          <div className="flex items-center gap-2 text-text-primary font-bold tracking-tight text-[16px]">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <LayoutGrid size={14} className="text-white" />
-            </div>
-            MULTI-AGENT AI
-          </div>
+          <HelpFlowLogo size="sm" showWordmark={true} />
         </div>
 
         {/* Desktop Back Navigation */}

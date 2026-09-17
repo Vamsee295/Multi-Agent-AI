@@ -150,7 +150,7 @@ export function AgentEcosystemSection() {
               One system.<br />Specialized agents.
             </h3>
             <p className="text-[16px] text-[#71717A] font-medium leading-relaxed">
-              Instead of relying on a single general-purpose prompt, Multi-Agent AI routes queries to autonomous domain specialists grounded by a shared retrieval core.
+              Instead of relying on a single general-purpose prompt, HelpFlow routes queries to autonomous domain specialists grounded by a shared retrieval core.
             </p>
           </div>
         </ScrollReveal>

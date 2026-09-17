@@ -1,4 +1,4 @@
-# Frontend — TechMart Support UI
+# Frontend — HelpFlow UI
 
 Next.js 14 chat UI connected to the FastAPI backend at `NEXT_PUBLIC_API_BASE_URL`.
 
@@ -30,7 +30,7 @@ uvicorn main:app --reload --port 8000
 
 Auth tokens are stored in `localStorage` and attached automatically via the Axios interceptor in `services/api.ts`.
 
-Guest mode sets `techmart_guest=1` and skips auth; signed-in users get session history synced from the backend.
+Guest mode sets `helpflow_guest=1` and skips auth; signed-in users get session history synced from the backend.
 
 ## Environment
 

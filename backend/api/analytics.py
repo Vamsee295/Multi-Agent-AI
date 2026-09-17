@@ -4,10 +4,16 @@ and satisfaction statistics from the MongoDB collections.
 """
 import os
 import glob
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
-from models.schemas import AnalyticsSummary, AgentUsageStat
+from models.schemas import (
+    AnalyticsSummary,
+    AgentUsageStat,
+    EscalationsAnalytics,
+)
+from models.escalation_constants import ACTIVE_TICKET_STATUSES, RESOLVED_STATUSES
 from database.mongo import get_db
-from auth.security import get_current_user_id
+from auth.security import get_current_user_id, require_support_user, AuthenticatedUser
 from config import get_settings
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
@@ -76,9 +82,9 @@ async def get_analytics_summary(user_id: str = Depends(get_current_user_id)):
         ]):
             escalation_count = doc.get("total", 0)
 
-        # Open tickets
+        # Open tickets (any non-terminal lifecycle status)
         async for doc in db.escalations.aggregate([
-            {"$match": {"user_id": user_id, "status": "open"}},
+            {"$match": {"user_id": user_id, "status": {"$in": list(ACTIVE_TICKET_STATUSES)}}},
             {"$count": "total"},
         ]):
             open_tickets = doc.get("total", 0)
@@ -163,3 +169,56 @@ async def get_agent_usage(user_id: str = Depends(get_current_user_id)):
         )
         for agent, count in sorted(agent_counts.items(), key=lambda x: -x[1])
     ]
+
+
+@router.get("/escalations", response_model=EscalationsAnalytics)
+async def get_escalations_analytics(
+    _: AuthenticatedUser = Depends(require_support_user),
+):
+    """Support-only escalations analytics: totals, rate, avg resolution time,
+    and breakdowns by reason/priority/status/category/assigned agent."""
+    db = get_db()
+
+    docs = [doc async for doc in db.escalations.find({})]
+
+    assistant_msgs = 0
+    try:
+        async for c in db.messages.aggregate([
+            {"$match": {"role": "assistant"}},
+            {"$count": "n"},
+        ]):
+            assistant_msgs = c.get("n", 0)
+    except Exception:
+        pass
+
+    def _count(statuses):
+        return sum(1 for d in docs if d.get("status") in statuses)
+
+    resolution_hours = []
+    for d in docs:
+        created, resolved = d.get("created_at"), d.get("resolved_at")
+        if resolved and created:
+            try:
+                resolution_hours.append(max((resolved - created).total_seconds() / 3600.0, 0.0))
+            except Exception:
+                pass
+
+    def _breakdown(key):
+        counts: dict[str, int] = {}
+        for d in docs:
+            k = d.get(key) or "none"
+            counts[k] = counts.get(k, 0) + 1
+        return dict(sorted(counts.items(), key=lambda x: -x[1]))
+
+    return EscalationsAnalytics(
+        total=len(docs),
+        escalation_rate=round(assistant_msgs and len(docs) / assistant_msgs, 4) if assistant_msgs else 0.0,
+        open_count=_count(ACTIVE_TICKET_STATUSES),
+        resolved_count=_count(RESOLVED_STATUSES),
+        avg_resolution_hours=round(sum(resolution_hours) / len(resolution_hours), 2) if resolution_hours else None,
+        by_reason=_breakdown("reason"),
+        by_priority=_breakdown("priority"),
+        by_status=_breakdown("status"),
+        by_category=_breakdown("category"),
+        by_assigned_agent=_breakdown("assigned_agent"),
+    )

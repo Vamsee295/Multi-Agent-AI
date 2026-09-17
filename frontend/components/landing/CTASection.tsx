@@ -24,7 +24,7 @@ export function CTASection() {
             href="/login" 
             className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#09090B] text-white text-[14px] font-semibold rounded-xl hover:bg-[#27272A] transition-all shadow-sm hover:translate-y-[-1px]"
           >
-            ENTER MULTI-AGENT AI <ArrowRight size={16} />
+            ENTER HELPFLOW <ArrowRight size={16} />
           </Link>
         </ScrollReveal>
       </div>

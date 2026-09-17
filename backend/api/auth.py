@@ -54,9 +54,10 @@ async def me(current_user: AuthenticatedUser = Depends(get_current_user)):
     user_id_out = current_user.user_id if current_user.auth_provider == "supabase" else str(user_doc["_id"])
     return UserPublic(
         id=user_id_out,
-        name=user_doc.get("name", "User"),
-        email=user_doc.get("email", ""),
-        created_at=user_doc.get("created_at", datetime.now(timezone.utc)),
+        name=user_doc.get("name") or "User",
+        email=user_doc.get("email") or "",
+        created_at=user_doc.get("created_at") or datetime.now(timezone.utc),
+        role=user_doc.get("role") or "user",
     )
 
 

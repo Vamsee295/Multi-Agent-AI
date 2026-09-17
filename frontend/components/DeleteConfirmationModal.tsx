@@ -7,6 +7,9 @@ interface DeleteConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   isDeleting: boolean;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
 }
 
 export default function DeleteConfirmationModal({
@@ -14,6 +17,9 @@ export default function DeleteConfirmationModal({
   onClose,
   onConfirm,
   isDeleting,
+  title = "Delete Conversation",
+  description = "Are you sure you want to delete this conversation? This action cannot be undone, and all associated messages will be permanently removed.",
+  confirmLabel = "Delete",
 }: DeleteConfirmationModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,7 +37,7 @@ export default function DeleteConfirmationModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={() => !isDeleting && onClose()}
         aria-hidden="true"
       />
@@ -39,11 +45,11 @@ export default function DeleteConfirmationModal({
       {/* Modal Dialog */}
       <div className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-2xl transition-all border border-[#E4E4E7] z-10 animate-fade-in">
         <h3 className="text-lg font-bold leading-6 text-[#09090B]">
-          Delete Conversation
+          {title}
         </h3>
         <div className="mt-2">
           <p className="text-sm text-[#71717A] leading-relaxed font-medium">
-            Are you sure you want to delete this conversation? This action cannot be undone, and all associated messages will be permanently removed.
+            {description}
           </p>
         </div>
 
@@ -62,7 +68,7 @@ export default function DeleteConfirmationModal({
             onClick={onConfirm}
             disabled={isDeleting}
           >
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? "Deleting..." : confirmLabel}
           </button>
         </div>
       </div>

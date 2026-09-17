@@ -51,12 +51,12 @@ def make_mock_supabase_token(
 @pytest.mark.asyncio
 async def test_supabase_token_decoding():
     test_uid = str(uuid.uuid4())
-    token = make_mock_supabase_token(user_id=test_uid, email="agent@techmart.com", name="Agent Smith")
+    token = make_mock_supabase_token(user_id=test_uid, email="agent@helpflow.com", name="Agent Smith")
     
     auth_user = decode_token_to_user(token)
     assert auth_user.auth_provider == "supabase"
     assert auth_user.user_id == test_uid
-    assert auth_user.email == "agent@techmart.com"
+    assert auth_user.email == "agent@helpflow.com"
     assert auth_user.name == "Agent Smith"
 
 
@@ -78,7 +78,7 @@ async def test_malformed_token_rejected():
 @pytest.mark.asyncio
 async def test_api_auth_me_supabase_user_and_idempotency():
     test_uid = str(uuid.uuid4())
-    token = make_mock_supabase_token(user_id=test_uid, email="supabase_user@techmart.com", name="Supa User")
+    token = make_mock_supabase_token(user_id=test_uid, email="supabase_user@helpflow.com", name="Supa User")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -87,7 +87,7 @@ async def test_api_auth_me_supabase_user_and_idempotency():
         assert res1.status_code == 200
         data1 = res1.json()
         assert data1["id"] == test_uid
-        assert data1["email"] == "supabase_user@techmart.com"
+        assert data1["email"] == "supabase_user@helpflow.com"
 
         # Second call: Returns existing profile without duplicate creation
         res2 = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
@@ -103,28 +103,28 @@ async def test_api_auth_me_supabase_user_and_idempotency():
 @pytest.mark.asyncio
 async def test_supabase_email_update_sync():
     test_uid = str(uuid.uuid4())
-    token_old = make_mock_supabase_token(user_id=test_uid, email="old_email@techmart.com", name="Email User")
+    token_old = make_mock_supabase_token(user_id=test_uid, email="old_email@helpflow.com", name="Email User")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         # Initial provisioning
         res1 = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_old}"})
         assert res1.status_code == 200
-        assert res1.json()["email"] == "old_email@techmart.com"
+        assert res1.json()["email"] == "old_email@helpflow.com"
 
         # Email update in Supabase
-        token_new = make_mock_supabase_token(user_id=test_uid, email="new_email@techmart.com", name="Email User")
+        token_new = make_mock_supabase_token(user_id=test_uid, email="new_email@helpflow.com", name="Email User")
         res2 = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_new}"})
         assert res2.status_code == 200
-        assert res2.json()["email"] == "new_email@techmart.com"
+        assert res2.json()["email"] == "new_email@helpflow.com"
 
 
 @pytest.mark.asyncio
 async def test_two_different_supabase_users_isolated():
     user1_uid = str(uuid.uuid4())
     user2_uid = str(uuid.uuid4())
-    token1 = make_mock_supabase_token(user_id=user1_uid, email="user1@techmart.com")
-    token2 = make_mock_supabase_token(user_id=user2_uid, email="user2@techmart.com")
+    token1 = make_mock_supabase_token(user_id=user1_uid, email="user1@helpflow.com")
+    token2 = make_mock_supabase_token(user_id=user2_uid, email="user2@helpflow.com")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -199,11 +199,11 @@ async def test_admin_role_authorization():
     regular_uid = str(uuid.uuid4())
 
     # Seed an admin user in MongoDB
-    admin_doc = new_supabase_user_doc(supabase_uid=admin_uid, email="admin@techmart.com", name="Admin User", role="admin")
+    admin_doc = new_supabase_user_doc(supabase_uid=admin_uid, email="admin@helpflow.com", name="Admin User", role="admin")
     await db.users.insert_one(admin_doc)
 
     # Seed a regular user in MongoDB
-    user_doc = new_supabase_user_doc(supabase_uid=regular_uid, email="user@techmart.com", name="Regular User", role="user")
+    user_doc = new_supabase_user_doc(supabase_uid=regular_uid, email="user@helpflow.com", name="Regular User", role="user")
     await db.users.insert_one(user_doc)
 
     # Regular user attempting admin action is forbidden

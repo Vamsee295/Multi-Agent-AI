@@ -142,6 +142,8 @@ def decode_token_to_user(token: str) -> AuthenticatedUser:
     if not token or not isinstance(token, str):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authentication token")
 
+
+
     try:
         unverified_header = jwt.get_unverified_header(token)
         unverified_payload = jwt.decode(token, options={"verify_signature": False})
@@ -200,5 +202,20 @@ async def require_admin_user(current_user: AuthenticatedUser = Depends(get_curre
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required for this resource",
+        )
+    return current_user
+
+
+async def require_support_user(current_user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:
+    """Support-role gate. `support` and `admin` roles may access the support queue."""
+    from database.mongo import get_db
+    from auth.profile_service import get_user_role
+
+    db = get_db()
+    role = await get_user_role(db, current_user.user_id)
+    if role not in ("support", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Support or admin privileges required for this resource",
         )
     return current_user

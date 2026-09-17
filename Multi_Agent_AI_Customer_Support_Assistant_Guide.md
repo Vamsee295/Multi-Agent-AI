@@ -313,7 +313,7 @@ Large-scale question-answer dataset suitable for semantic retrieval systems. (ar
 https://github.com/microsoft/MSMARCO-Question-Answering?utm_source=chatgpt.com
 
 10. Creating the Company Knowledge Base
-Students should create a fictional company (e.g., TechMart Electronics) and prepare:
+Students should create a fictional company (e.g., HelpFlow Electronics) and prepare:
 knowledge_base/
 FAQ.pdf
 RefundPolicy.pdf

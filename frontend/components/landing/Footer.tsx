@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGrid } from "lucide-react";
+import { HelpFlowLogo } from "@/components/HelpFlowLogo";
 
 export function Footer() {
   return (
@@ -10,11 +10,8 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-start gap-10 mb-16">
           
           <div className="max-w-xs">
-            <div className="flex items-center gap-2 text-[#09090B] mb-4">
-              <div className="w-6 h-6 bg-[#09090B] rounded flex items-center justify-center">
-                <LayoutGrid size={12} className="text-white" />
-              </div>
-              <span className="text-[14px] font-bold tracking-widest uppercase">Multi-Agent AI</span>
+            <div className="mb-4">
+              <HelpFlowLogo size="sm" showWordmark={true} />
             </div>
             <p className="text-[13px] text-[#71717A] leading-relaxed font-medium">
               An intelligent customer support system powered by specialized agents, vector retrieval, and Large Language Models.
@@ -43,7 +40,7 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between items-center pt-8 border-t border-[#E4E4E7] text-[12px] text-[#A1A1AA]">
-          <p>© {new Date().getFullYear()} Multi-Agent AI System. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} HelpFlow Platform. All rights reserved.</p>
           <p className="mt-2 sm:mt-0">Designed for autonomous orchestration.</p>
         </div>
       </div>

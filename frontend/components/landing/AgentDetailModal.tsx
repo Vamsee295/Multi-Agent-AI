@@ -64,7 +64,7 @@ export function AgentDetailModal({ isOpen, onClose, agent }: AgentDetailModalPro
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200"
+        className="fixed inset-0 bg-black/50 transition-opacity duration-150"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -233,7 +233,7 @@ export function AgentDetailModal({ isOpen, onClose, agent }: AgentDetailModalPro
         {/* Footer */}
         <div className="px-6 sm:px-8 py-4 border-t border-[#E4E4E7] bg-[#FAFAFA] flex items-center justify-between">
           <span className="text-[12px] font-mono text-[#71717A]">
-            Node Inspection • Multi-Agent AI
+            Node Inspection • HelpFlow
           </span>
           <button
             type="button"

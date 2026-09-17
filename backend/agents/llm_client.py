@@ -145,7 +145,7 @@ def _mock_generate(system_prompt: str, user_prompt: str) -> str:
 
     if not context_block or context_block == "No relevant documents found.":
         return (
-            f"I'm the TechMart {agent_type} Agent. I couldn't find company documentation "
+            f"I'm the HelpFlow {agent_type} Agent. I couldn't find company documentation "
             f"directly related to your request: '{customer_message}'. Could you clarify?"
         )
 
@@ -154,7 +154,7 @@ def _mock_generate(system_prompt: str, user_prompt: str) -> str:
         chunks = [context_block]
 
     response_text = (
-        f"I'm the TechMart {agent_type} Agent. Based on our company documents:\n\n"
+        f"I'm the HelpFlow {agent_type} Agent. Based on our company documents:\n\n"
     )
     for chunk in chunks:
         source_match = re.search(r"Source: (\S+)", chunk)

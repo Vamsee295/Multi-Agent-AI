@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, LayoutGrid, ArrowRight, ArrowLeft } from "lucide-react";
+import { HelpFlowLogo } from "@/components/HelpFlowLogo";
 import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 import { supabase } from "@/lib/supabase/client";
 
@@ -59,12 +60,7 @@ export default function ForgotPasswordPage() {
           >
             <ArrowLeft size={14} /> Back to login
           </Link>
-          <div className="flex items-center gap-2 text-text-primary font-bold tracking-tight text-[16px]">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <LayoutGrid size={14} className="text-white" />
-            </div>
-            MULTI-AGENT AI
-          </div>
+          <HelpFlowLogo size="sm" showWordmark={true} />
         </div>
 
         {/* Desktop Back Navigation */}

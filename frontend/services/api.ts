@@ -63,6 +63,18 @@ export interface RetrievedChunk {
   score: number;
 }
 
+export interface EscalationDetail {
+  ticket_id: string;
+  reason: string;
+  source: string;
+  priority: string;
+  status: string;
+  assigned_team: string;
+  ai_summary?: string | null;
+  category?: string | null;
+  created_at: string;
+}
+
 export interface ChatResponse {
   session_id: string;
   message: string;
@@ -70,22 +82,20 @@ export interface ChatResponse {
   intent_confidence: number;
   retrieved_context: RetrievedChunk[];
   escalated: boolean;
-  escalation_details?: {
-    ticket_id: string;
-    priority: string;
-    assigned_team: string;
-  };
+  escalation_details?: EscalationDetail;
   sentiment: SentimentLabel;
   sentiment_score: number;
   response_time_ms: number;
   created_at: string;
+  conversation_mode?: "AI" | "HUMAN" | "RESOLVED";
 }
 
 export interface ConversationTurn {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "human";
   content: string;
   timestamp: string;
-  agents_invoked: AgentName[];
+  agents_invoked?: AgentName[];
+  author_name?: string | null;
 }
 
 export interface SessionSummary {
@@ -101,6 +111,7 @@ export interface UserPublic {
   name: string;
   email: string;
   created_at: string;
+  role?: string;
 }
 
 export interface HealthResponse {
@@ -133,7 +144,33 @@ export interface AnalyticsSummary {
   agent_usage: AgentUsageStat[];
 }
 
-// ---------- Tickets ----------
+// ---------- Tickets / Escalations ----------
+export type EscalationReason =
+  | "USER_REQUESTED_HUMAN"
+  | "AI_RESPONSE_UNHELPFUL"
+  | "LOW_CONFIDENCE"
+  | "KNOWLEDGE_NOT_FOUND"
+  | "REPEATED_FAILURE"
+  | "PAYMENT_DISPUTE"
+  | "REFUND_REQUEST"
+  | "SECURITY_ISSUE"
+  | "FRAUD"
+  | "SERIOUS_COMPLAINT"
+  | "OTHER";
+
+export type EscalationSource = "USER" | "AI" | "SYSTEM";
+export type EscalationPriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+export type EscalationStatus =
+  | "OPEN"
+  | "ESCALATED"
+  | "PENDING_HUMAN"
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_CUSTOMER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED";
+
 export interface TicketSummary {
   ticket_id: string;
   session_id: string;
@@ -141,7 +178,87 @@ export interface TicketSummary {
   agents_invoked: string[];
   intent_confidence: number;
   status: string;
+  priority: string;
   created_at: string;
+  reason?: string;
+  source?: string;
+  category?: string | null;
+  assigned_team?: string;
+  assigned_agent?: string | null;
+  ai_summary?: string | null;
+  updated_at?: string | null;
+  resolved_at?: string | null;
+  resolved_by?: string | null;
+}
+
+export interface EscalationEvent {
+  type: string;
+  status?: string | null;
+  message?: string | null;
+  actor?: string | null;
+  actor_type?: string | null;
+  created_at: string;
+}
+
+export interface TicketDetail extends TicketSummary {
+  user_id?: string;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  last_customer_message?: string | null;
+  events?: EscalationEvent[];
+}
+
+export interface SupportQueueStats {
+  open: number;
+  high: number;
+  critical: number;
+  pending_human: number;
+  in_progress: number;
+  resolved: number;
+}
+
+export interface SupportQueueItem {
+  ticket_id: string;
+  subject: string;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  category?: string | null;
+  reason?: string;
+  source?: string;
+  priority: string;
+  status: string;
+  assigned_team: string;
+  assigned_agent?: string | null;
+  ai_summary?: string | null;
+  last_customer_message?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface SupportQueueResponse {
+  items: SupportQueueItem[];
+  total: number;
+  stats: SupportQueueStats;
+}
+
+export interface EscalationsAnalytics {
+  total: number;
+  escalation_rate: number;
+  open_count: number;
+  resolved_count: number;
+  avg_resolution_hours: number | null;
+  by_reason: Record<string, number>;
+  by_priority: Record<string, number>;
+  by_status: Record<string, number>;
+  by_category: Record<string, number>;
+  by_assigned_agent: Record<string, number>;
+}
+
+export interface ConversationModeResponse {
+  session_id: string;
+  mode: "AI" | "HUMAN" | "RESOLVED";
+  ticket_id?: string | null;
+  human_agent_name?: string | null;
 }
 
 export async function checkHealth(): Promise<HealthResponse> {
@@ -210,13 +327,158 @@ export async function fetchAnalytics(): Promise<AnalyticsSummary> {
   return data;
 }
 
-export async function fetchTickets(status: "open" | "resolved" = "open"): Promise<TicketSummary[]> {
-  const { data } = await api.get(`/api/tickets?status=${status}`);
+// ----- Customer ticket API -----
+
+export type TicketStatusFilter = "active" | "resolved" | "closed" | EscalationStatus;
+
+export async function fetchMyTickets(status?: TicketStatusFilter): Promise<TicketSummary[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const { data } = await api.get(`/api/tickets${query}`);
   return data;
 }
 
+/** Legacy alias kept for backward compat. */
+export const fetchTickets = fetchMyTickets;
+
+export async function fetchTicketDetail(ticketId: string): Promise<TicketDetail> {
+  const { data } = await api.get(`/api/tickets/${ticketId}`);
+  return data;
+}
+
+export async function fetchTicketEvents(ticketId: string): Promise<EscalationEvent[]> {
+  const { data } = await api.get(`/api/tickets/${ticketId}/events`);
+  return data;
+}
+
+export async function createEscalation(
+  sessionId: string,
+  reason?: EscalationReason,
+  priority?: EscalationPriority,
+  category?: string,
+  messageId?: string
+): Promise<EscalationDetail> {
+  const { data } = await api.post("/api/tickets/escalate", {
+    session_id: sessionId,
+    ...(reason ? { reason } : {}),
+    ...(priority ? { priority } : {}),
+    ...(category ? { category } : {}),
+    ...(messageId ? { message_id: messageId } : {}),
+  });
+  return data;
+}
+
+/** Legacy self-resolve wrapper (demoted by the backend lifecycle). */
 export async function resolveTicket(ticketId: string): Promise<TicketSummary> {
   const { data } = await api.patch(`/api/tickets/${ticketId}/resolve`);
+  return data;
+}
+
+export async function deleteTicket(ticketId: string): Promise<{ status: string; deleted: boolean; ticket_id: string }> {
+  const { data } = await api.delete(`/api/tickets/${ticketId}`);
+  return data;
+}
+
+// ----- Support queue API -----
+
+export interface SupportQueueFilters {
+  status?: string;
+  priority?: string;
+  category?: string;
+  assigned_agent?: string;
+  search?: string;
+  sort?: string;
+  limit?: number;
+}
+
+export async function fetchSupportQueue(filters?: SupportQueueFilters): Promise<SupportQueueResponse> {
+  const params = new URLSearchParams();
+  if (filters) {
+    if (filters.status) params.set("status", filters.status);
+    if (filters.priority) params.set("priority", filters.priority);
+    if (filters.category) params.set("category", filters.category);
+    if (filters.assigned_agent) params.set("assigned_agent", filters.assigned_agent);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.sort) params.set("sort", filters.sort);
+    if (filters.limit) params.set("limit", String(filters.limit));
+  }
+  const qs = params.toString();
+  const { data } = await api.get(`/api/tickets/support/queue${qs ? `?${qs}` : ""}`);
+  return data;
+}
+
+export async function fetchSupportTicketDetail(ticketId: string): Promise<TicketDetail> {
+  const { data } = await api.get(`/api/tickets/support/${ticketId}`);
+  return data;
+}
+
+export async function fetchTicketConversation(ticketId: string): Promise<ConversationTurn[]> {
+  const { data } = await api.get(`/api/tickets/${ticketId}/conversation`);
+  return data;
+}
+
+export async function takeCase(ticketId: string): Promise<TicketSummary> {
+  const { data } = await api.post(`/api/tickets/${ticketId}/take`);
+  return data;
+}
+
+export async function assignEscalation(ticketId: string, agentId: string): Promise<TicketSummary> {
+  const { data } = await api.post(`/api/tickets/${ticketId}/assign`, { agent_id: agentId });
+  return data;
+}
+
+export async function updatePriority(
+  ticketId: string,
+  priority: EscalationPriority,
+  note?: string
+): Promise<TicketSummary> {
+  const { data } = await api.patch(`/api/tickets/${ticketId}/priority`, {
+    priority,
+    ...(note ? { note } : {}),
+  });
+  return data;
+}
+
+export async function updateStatus(
+  ticketId: string,
+  status: EscalationStatus,
+  note?: string
+): Promise<TicketSummary> {
+  const { data } = await api.patch(`/api/tickets/${ticketId}/status`, {
+    status,
+    ...(note ? { note } : {}),
+  });
+  return data;
+}
+
+export async function resolveEscalation(ticketId: string): Promise<TicketSummary> {
+  const { data } = await api.post(`/api/tickets/${ticketId}/resolve`);
+  return data;
+}
+
+export async function closeEscalation(ticketId: string): Promise<TicketSummary> {
+  const { data } = await api.post(`/api/tickets/${ticketId}/close`);
+  return data;
+}
+
+export async function reopenEscalation(ticketId: string): Promise<TicketSummary> {
+  const { data } = await api.post(`/api/tickets/${ticketId}/reopen`);
+  return data;
+}
+
+export async function sendHumanMessage(
+  ticketId: string,
+  content: string,
+  markWaiting = true
+): Promise<{ session_id: string; status: string; role: string; message: string }> {
+  const { data } = await api.post(`/api/tickets/${ticketId}/messages`, {
+    content,
+    mark_waiting: markWaiting,
+  });
+  return data;
+}
+
+export async function fetchEscalationsAnalytics(): Promise<EscalationsAnalytics> {
+  const { data } = await api.get("/api/analytics/escalations");
   return data;
 }
 

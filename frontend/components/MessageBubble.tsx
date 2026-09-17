@@ -6,7 +6,7 @@ import { AgentBadgeRow } from "./AgentPulseStrip";
 import ReactMarkdown from "react-markdown";
 import { FeedbackWidget } from "./FeedbackWidget";
 import { SentimentBadge } from "./SentimentBadge";
-import { AlertTriangle, Check, Loader2, X, Zap } from "lucide-react";
+import { AlertTriangle, Check, Loader2, X, Zap, User } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 
 function WorkflowPipeline({
@@ -239,12 +239,15 @@ function WorkflowPipeline({
 export function MessageBubble({
   message,
   onFeedback,
+  onEscalate,
 }: {
   message: ChatMessage;
   onFeedback?: (msgId: string, rating: "up" | "down") => void;
+  onEscalate?: () => void;
 }) {
   const { settings } = useSettings();
   const isUser = message.role === "user";
+  const isHuman = message.role === "human";
   const isWelcome = message.id === "welcome";
 
   // For assistant messages, manage whether the final response has been revealed
@@ -253,6 +256,28 @@ export function MessageBubble({
   const handlePipelineComplete = () => {
     setIsRevealed(true);
   };
+
+  // Human-Support bubble: distinct neutral styling, left-aligned, no pipeline.
+  if (isHuman) {
+    return (
+      <div className="flex w-full animate-slide-up justify-start">
+        <div className="max-w-[85%] md:max-w-[75%] w-full">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="w-5 h-5 bg-zinc-800 rounded-full flex items-center justify-center shrink-0">
+              <User size={11} className="text-white" />
+            </div>
+            <span className="text-[12px] font-semibold text-zinc-800 tracking-wide">
+              Human Support
+              {message.authorName ? ` · ${message.authorName}` : ""}
+            </span>
+          </div>
+          <div className="text-[14px] leading-relaxed bg-zinc-100 text-zinc-900 border border-zinc-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-card prose prose-sm prose-chat max-w-none">
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex w-full animate-slide-up ${isUser ? "justify-end" : "justify-start"}`}>
@@ -295,37 +320,60 @@ export function MessageBubble({
 
         {/* Escalation notice */}
         {!isUser && !isWelcome && isRevealed && message.escalated && (
-          <div className="mt-3 bg-white border border-amber-200 rounded-lg overflow-hidden animate-fade-in shadow-sm">
-            <div className="bg-amber-50 px-3 py-2 border-b border-amber-200 flex items-center gap-2 text-amber-800">
-              <AlertTriangle size={14} className="shrink-0" />
-              <span className="text-[12px] font-bold tracking-wider">HUMAN ESCALATION CREATED</span>
+          <div className="mt-3 bg-white border border-zinc-200 rounded-xl overflow-hidden animate-fade-in shadow-2xs">
+            <div className="bg-zinc-100 px-3.5 py-2.5 border-b border-zinc-200 flex items-center justify-between text-zinc-900">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={14} className="shrink-0 text-zinc-800" />
+                <span className="text-[11px] font-bold tracking-wider uppercase text-zinc-900">
+                  Human Escalation Created
+                </span>
+              </div>
+              <a
+                href={`/tickets?id=${message.escalationDetails?.ticket_id || ""}`}
+                className="text-[11px] font-semibold text-zinc-900 hover:text-black underline decoration-zinc-400 hover:decoration-zinc-900 underline-offset-2 flex items-center gap-1 transition-colors"
+              >
+                View Escalation →
+              </a>
             </div>
-            <div className="p-3 grid grid-cols-2 gap-y-3 gap-x-4 text-[12px]">
+            <div className="p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-4 text-[12px]">
               <div>
-                <div className="text-text-muted mb-0.5">Ticket ID</div>
-                <div className="font-medium text-text-primary">
-                  {message.escalationDetails?.ticket_id || "TK-PENDING"}
+                <div className="text-text-muted mb-0.5 text-[11px]">Ticket ID</div>
+                <div className="font-mono font-semibold text-zinc-900">
+                  {message.escalationDetails?.ticket_id || "HF-PENDING"}
                 </div>
               </div>
               <div>
-                <div className="text-text-muted mb-0.5">Priority</div>
-                <div className="font-medium text-amber-700 bg-amber-100/50 inline-block px-1.5 py-0.5 rounded border border-amber-200/50">
+                <div className="text-text-muted mb-0.5 text-[11px]">Priority</div>
+                <div className="font-semibold text-zinc-900 bg-zinc-100 inline-block px-2 py-0.5 rounded border border-zinc-300 text-[10px] uppercase tracking-wider">
                   {message.escalationDetails?.priority || "Medium"}
                 </div>
               </div>
               <div>
-                <div className="text-text-muted mb-0.5">Assigned Team</div>
-                <div className="font-medium text-text-primary">
-                  {message.escalationDetails?.assigned_team || "Technical Support"}
+                <div className="text-text-muted mb-0.5 text-[11px]">Assigned Team</div>
+                <div className="font-medium text-zinc-900">
+                  {message.escalationDetails?.assigned_team || "Customer Success"}
                 </div>
               </div>
               <div>
-                <div className="text-text-muted mb-0.5">Status</div>
-                <div className="font-bold text-[11px] tracking-wide text-emerald-700 bg-emerald-100/50 inline-block px-1.5 py-0.5 rounded border border-emerald-200">
-                  OPEN
+                <div className="text-text-muted mb-0.5 text-[11px]">Status</div>
+                <div className="font-bold text-[10px] tracking-wider text-white bg-zinc-900 inline-block px-2 py-0.5 rounded border border-zinc-900 uppercase">
+                  {message.escalationDetails?.status || "ESCALATED"}
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Escalate-to-human action row */}
+        {!isUser && !isWelcome && isRevealed && !message.isError && !message.escalated && onEscalate && (
+          <div className="mt-2.5 flex items-center gap-2 animate-fade-in">
+            <span className="text-[11px] text-text-muted">Didn&apos;t solve your issue?</span>
+            <button
+              onClick={onEscalate}
+              className="text-[11px] font-semibold text-zinc-700 hover:text-zinc-900 underline decoration-zinc-300 hover:decoration-zinc-700 underline-offset-2 transition-colors"
+            >
+              Escalate to human
+            </button>
           </div>
         )}
 

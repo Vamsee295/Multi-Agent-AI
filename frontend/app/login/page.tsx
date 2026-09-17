@@ -22,21 +22,40 @@ export default function LoginPage() {
 
   const displayError = localError || authError;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setLocalError("");
     setErrorCode(null);
     setAuthError(null);
+    
+    // Read from state or DOM (handles browser autofill)
+    const emailEl = typeof document !== "undefined" ? (document.getElementById("login-email") as HTMLInputElement | null) : null;
+    const passwordEl = typeof document !== "undefined" ? (document.getElementById("login-password") as HTMLInputElement | null) : null;
+
+    const formEmail = (email || emailEl?.value || "").trim().toLowerCase();
+    const formPassword = password || passwordEl?.value || "";
+
+    if (!formEmail) {
+      setLocalError("Please enter your email address.");
+      return;
+    }
+    if (!formPassword) {
+      setLocalError("Please enter your password.");
+      return;
+    }
+
     setStatus("loading");
     
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-      const result = await login(normalizedEmail, password);
+      const result = await login(formEmail, formPassword);
       if (result.success) {
         setStatus("success");
         setTimeout(() => {
-          router.push("/chat");
-        }, 600);
+          window.location.href = "/chat";
+        }, 300);
       } else {
         setErrorCode(result.code || "UNKNOWN");
         setLocalError(result.error || "Invalid email or password. Please try again.");
@@ -49,8 +68,10 @@ export default function LoginPage() {
   };
 
   const handleGoToVerify = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("verify_email_target", email.trim().toLowerCase());
+    const emailEl = typeof document !== "undefined" ? (document.getElementById("login-email") as HTMLInputElement | null) : null;
+    const targetEmail = (email || emailEl?.value || "").trim().toLowerCase();
+    if (typeof window !== "undefined" && targetEmail) {
+      sessionStorage.setItem("verify_email_target", targetEmail);
     }
     router.push("/verify-email");
   };
@@ -140,7 +161,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div>
-              <label className="block text-[13px] font-semibold text-[#09090B] mb-2">
+              <label htmlFor="login-email" className="block text-[13px] font-semibold text-[#09090B] mb-2">
                 Email address
               </label>
               <div className="relative group">
@@ -148,10 +169,19 @@ export default function LoginPage() {
                   <Mail size={16} strokeWidth={2.5} />
                 </div>
                 <input
+                  id="login-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
                   placeholder="Enter your email"
                   className="w-full border border-[#E4E4E7] rounded-xl pl-10 pr-4 h-[46px] text-[14px] text-[#09090B] placeholder:text-[#A1A1AA] bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all font-medium"
                 />
@@ -160,15 +190,24 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div>
-              <label className="block text-[13px] font-semibold text-[#09090B] mb-2">
+              <label htmlFor="login-password" className="block text-[13px] font-semibold text-[#09090B] mb-2">
                 Password
               </label>
               <div className="relative group">
                 <input
+                  id="login-password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
                   placeholder="Enter your password"
                   className="w-full border border-[#E4E4E7] rounded-xl pl-4 pr-11 h-[46px] text-[14px] text-[#09090B] placeholder:text-[#A1A1AA] bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all font-medium"
                 />
@@ -206,8 +245,9 @@ export default function LoginPage() {
 
             {/* Submit Button */}
             <button
-              type="submit"
-              disabled={status !== "idle" || !email || !password}
+              type="button"
+              disabled={status === "loading"}
+              onClick={handleSubmit}
               className={`w-full mt-6 rounded-xl h-[46px] text-[14px] font-semibold transition-all flex items-center justify-center gap-2 shadow-sm
                 ${status === "success" 
                   ? "bg-emerald-500 hover:bg-emerald-600 text-white" 

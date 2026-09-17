@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Plus, MessageSquare, BarChart2, LayoutGrid, Trash2, PanelLeftClose, PanelLeft } from "lucide-react";
-import { SessionSummary } from "@/services/api";
+import { LogOut, Plus, MessageSquare, BarChart2, LayoutGrid, Trash2, PanelLeftClose, PanelLeft, Inbox } from "lucide-react";
+import { SessionSummary, TicketSummary } from "@/services/api";
 import { useState, useRef, useEffect, useCallback } from "react";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
+import { HelpFlowLogo } from "@/components/HelpFlowLogo";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SidebarProps {
   sessions: SessionSummary[];
+  activeEscalations?: TicketSummary[];
   currentSessionId?: string;
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
@@ -26,6 +29,7 @@ const DEFAULT_WIDTH = 260;
 
 export function Sidebar({
   sessions,
+  activeEscalations,
   currentSessionId,
   onSelectSession,
   onDeleteSession,
@@ -43,6 +47,9 @@ export function Sidebar({
   const [isDragging, setIsDragging] = useState(false);
 
   const isDraggingRef = useRef(false);
+
+  const { role } = useAuth();
+  const isSupport = role === "support" || role === "admin";
 
   const confirmDelete = async () => {
     if (!sessionToDelete) return;
@@ -64,32 +71,28 @@ export function Sidebar({
     document.body.style.userSelect = "none";
   };
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDraggingRef.current) return;
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onMouseMove = (e: MouseEvent) => {
       const newWidth = Math.min(Math.max(e.clientX, MIN_WIDTH), MAX_WIDTH);
       onWidthChange?.(newWidth);
-    },
-    [onWidthChange]
-  );
+    };
 
-  const handleMouseUp = useCallback(() => {
-    if (isDraggingRef.current) {
+    const onMouseUp = () => {
       isDraggingRef.current = false;
       setIsDragging(false);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-    }
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [handleMouseMove, handleMouseUp]);
+
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isDragging, onWidthChange]);
 
   return (
     <div
@@ -102,14 +105,9 @@ export function Sidebar({
         {/* Brand Header */}
         <div className="px-4 py-4 border-b border-[#E4E4E7]">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 bg-[#09090B] rounded-lg flex items-center justify-center shrink-0">
-                <LayoutGrid size={14} className="text-white" />
-              </div>
-              <span className="text-[15px] font-bold text-[#09090B] tracking-tight truncate">
-                Multi-Agent AI
-              </span>
-            </div>
+            <Link href="/" className="min-w-0 hover:opacity-90 transition-opacity">
+              <HelpFlowLogo size="sm" showWordmark={true} />
+            </Link>
             {onToggleOpen && (
               <button
                 onClick={onToggleOpen}
@@ -182,6 +180,15 @@ export function Sidebar({
             </div>
             <span className="truncate">Escalations</span>
           </Link>
+          {isSupport && (
+            <Link
+              href="/support"
+              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-[13px] font-medium text-text-secondary hover:text-text-primary hover:bg-[#F4F4F5] transition-colors"
+            >
+              <Inbox size={15} className="text-text-muted shrink-0" />
+              <span className="truncate">Support Queue</span>
+            </Link>
+          )}
           <Link
             href="/architecture"
             className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-[13px] font-medium text-text-secondary hover:text-text-primary hover:bg-[#F4F4F5] transition-colors"
@@ -204,6 +211,50 @@ export function Sidebar({
 
         {/* Session History */}
         <div className="flex-1 overflow-y-auto py-3 px-3">
+          {activeEscalations && activeEscalations.length > 0 && (
+            <div className="mb-6">
+              <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider px-3 mb-2 truncate">
+                Active Escalations
+              </p>
+              {activeEscalations.map((t) => (
+                <div
+                  key={t.ticket_id}
+                  className={`group relative w-full text-left rounded-lg transition-all flex flex-col gap-0.5 mb-0.5 ${
+                    t.session_id === currentSessionId
+                      ? "bg-[#F4F4F5] text-[#09090B] border border-[#E4E4E7] font-semibold"
+                      : "text-text-secondary hover:bg-[#F4F4F5] hover:text-text-primary"
+                  }`}
+                >
+                  <button
+                    onClick={() => onSelectSession(t.session_id)}
+                    className="w-full text-left px-3 py-2.5"
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="w-[13px] h-[13px] flex items-center justify-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      </div>
+                      <span className="text-[13px] font-medium truncate">
+                        {t.trigger_message || "Human Escalation"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pl-5 mt-1 gap-2">
+                      <span className="text-[11px] text-text-muted truncate flex-1 font-mono">
+                        {t.ticket_id}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
+                        t.priority === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                        t.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                        'bg-zinc-100 text-zinc-600'
+                      }`}>
+                        {t.status.replace("_", " ")}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider px-3 mb-2 truncate">
             Recent Conversations
           </p>

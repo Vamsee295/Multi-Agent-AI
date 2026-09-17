@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, LayoutGrid, ArrowRight, ArrowLeft } from "lucide-react";
+import { HelpFlowLogo } from "@/components/HelpFlowLogo";
 import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 import { supabase } from "@/lib/supabase/client";
 
@@ -112,12 +113,7 @@ export default function UpdatePasswordPage() {
         
         {/* Mobile Header (Hidden on lg screens) */}
         <div className="lg:hidden w-full max-w-[400px] flex flex-col mb-12 relative">
-          <div className="flex items-center gap-2 text-text-primary font-bold tracking-tight text-[16px]">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-              <LayoutGrid size={14} className="text-white" />
-            </div>
-            MULTI-AGENT AI
-          </div>
+          <HelpFlowLogo size="sm" showWordmark={true} />
         </div>
 
         {/* Form Container */}

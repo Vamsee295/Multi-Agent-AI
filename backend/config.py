@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     # Intent detection: "keyword" | "llm" | "hybrid"
     INTENT_DETECTION_MODE: str = os.getenv("INTENT_DETECTION_MODE", "hybrid")
 
+    # Escalation policy
+    ESCALATION_CONFIDENCE_THRESHOLD: float = float(os.getenv("ESCALATION_CONFIDENCE_THRESHOLD", "0.45"))
+    REPEATED_FAILURE_THRESHOLD: int = int(os.getenv("REPEATED_FAILURE_THRESHOLD", "2"))
+    TICKET_ID_PREFIX: str = os.getenv("TICKET_ID_PREFIX", "HF")
+    HUMAN_REQUEST_PRIORITY: str = os.getenv("HUMAN_REQUEST_PRIORITY", "MEDIUM")
+
     # Embeddings / RAG
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     VECTOR_STORE_PATH: str = os.getenv("VECTOR_STORE_PATH", "vectorstore/index")

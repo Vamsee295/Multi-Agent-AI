@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS: WorkspaceSettings = {
   compactMode: false,
 };
 
-const STORAGE_KEY = "techmart_workspace_settings_v1";
+const STORAGE_KEY = "helpflow_workspace_settings_v1";
 
 export function useSettings() {
   const [settings, setSettings] = useState<WorkspaceSettings>(DEFAULT_SETTINGS);

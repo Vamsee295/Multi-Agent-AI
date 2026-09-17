@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, X, Send, MessageSquare, PanelLeft } from "lucide-react";
+import { Menu, X, Send, MessageSquare, PanelLeft, UserRound, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useChat } from "@/hooks/useChat";
 import { Sidebar } from "@/components/Sidebar";
 import { MessageBubble } from "@/components/MessageBubble";
+import { EscalateModal } from "@/components/EscalateModal";
 import { AgentPulseStrip } from "@/components/AgentPulseStrip";
 import { BackendStatus } from "@/components/BackendStatus";
 
@@ -15,11 +16,14 @@ export default function ChatPage() {
   const { user, isAuthenticated, isInitialized: authInit, logout } = useAuth();
   const {
     messages, sendMessage, isSending, activeAgents, error,
-    sessionId, sessions, isLoadingSessions, selectSession,
+    sessionId, sessions, activeEscalations, isLoadingSessions, selectSession,
     startNewChat, handleFeedback, deleteConversation,
+    escalateConversation, isEscalating, escalationNotice, clearEscalationNotice,
+    conversationMode,
   } = useChat({ isLoggedIn: !!user, isInitialized: authInit });
 
   const [input, setInput] = useState("");
+  const [escalateModalOpen, setEscalateModalOpen] = useState(false);
   // sidebarOpen: true by default on desktop, false on mobile
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(260);
@@ -110,6 +114,7 @@ export default function ChatPage() {
       >
         <Sidebar
           sessions={sessions}
+          activeEscalations={activeEscalations}
           currentSessionId={sessionId}
           onSelectSession={(id) => {
             selectSession(id);
@@ -188,7 +193,7 @@ export default function ChatPage() {
                 <MessageSquare size={26} className="text-white" />
               </div>
               <h2 className="text-[22px] font-bold text-text-primary mb-2">
-                Welcome to Multi-Agent AI
+                Welcome to HelpFlow
               </h2>
               <p className="text-[14px] text-text-muted mb-8 text-center max-w-md font-medium">
                 Your enterprise-grade support assistant. Powered by a multi-agent routing architecture.
@@ -231,9 +236,49 @@ export default function ChatPage() {
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+              {/* Human handoff banner */}
+              {conversationMode === "HUMAN" && (
+                <div className="flex items-start gap-2.5 bg-zinc-50 border border-zinc-300 rounded-lg px-3.5 py-3 animate-fade-in">
+                  <UserRound size={16} className="text-zinc-800 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[13px] font-semibold text-zinc-900">Handed off to human support</p>
+                    <p className="text-[12px] text-zinc-600 mt-0.5">
+                      This conversation is now handled by our human support team. A support agent will respond here shortly — the automated assistant has paused.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Escalation action notice */}
+              {escalationNotice && (
+                <div
+                  className={`flex items-start justify-between gap-2 rounded-lg px-3.5 py-2.5 animate-fade-in ${
+                    escalationNotice.type === "success"
+                      ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                      : "bg-red-50 border border-red-200 text-red-700"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {escalationNotice.type === "success" ? (
+                      <CheckCircle2 size={15} className="shrink-0 mt-0.5" />
+                    ) : (
+                      <X size={15} className="shrink-0 mt-0.5" />
+                    )}
+                    <span className="text-[12px] font-medium">{escalationNotice.text}</span>
+                  </div>
+                  <button onClick={clearEscalationNotice} className="opacity-60 hover:opacity-100 shrink-0">
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
               {messages.map((msg) => (
                 <div key={msg.id} className="flex flex-col">
-                  <MessageBubble message={msg} onFeedback={handleFeedback} />
+                  <MessageBubble
+                    message={msg}
+                    onFeedback={handleFeedback}
+                    onEscalate={() => setEscalateModalOpen(true)}
+                  />
                 </div>
               ))}
 
@@ -260,7 +305,11 @@ export default function ChatPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about billing, orders, technical support..."
+                placeholder={
+                  conversationMode === "HUMAN"
+                    ? "Reply to the human support agent..."
+                    : "Ask about billing, orders, technical support..."
+                }
                 rows={1}
                 disabled={isSending}
                 className="flex-1 resize-none bg-transparent py-3 px-3.5 text-[14px] text-text-primary placeholder:text-text-muted max-h-32 focus:outline-none"
@@ -274,11 +323,27 @@ export default function ChatPage() {
               </button>
             </div>
             <p className="text-center text-[11px] text-text-muted mt-2">
-              AI responses may be inaccurate. Verify important information independently.
+              {conversationMode === "HUMAN"
+                ? "Your messages go directly to the human support agent."
+                : "AI responses may be inaccurate. Verify important information independently."}
             </p>
           </div>
         </footer>
       </div>
+
+      <EscalateModal
+        isOpen={escalateModalOpen}
+        onClose={() => setEscalateModalOpen(false)}
+        sessionId={sessionId}
+        isEscalating={isEscalating}
+        onSubmit={async (reason, priority) => {
+          const detail = await escalateConversation(reason, priority);
+          if (detail) {
+            setEscalateModalOpen(false);
+          }
+          return detail;
+        }}
+      />
     </div>
   );
 }
