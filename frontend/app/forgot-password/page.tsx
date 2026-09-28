@@ -9,19 +9,36 @@ import { supabase } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const formEmail = (formData.get("email") as string) || email;
+    const emailEl = typeof document !== "undefined" ? (document.getElementById("forgot-email") as HTMLInputElement | null) : null;
+    const targetEmail = (formEmail || emailEl?.value || "").trim().toLowerCase();
+
+    if (!targetEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    setSubmittedEmail(targetEmail);
     setStatus("loading");
 
     try {
-      // Use window.location.origin to dynamically build the redirect URL
-      const redirectTo = `${window.location.origin}/update-password`;
+      // Dynamic origin: keeps localhost:3000 during dev and helpflow.tech in production
+      const appUrl =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_APP_URL || "https://helpflow.tech");
+      const redirectTo = `${appUrl}/reset-password`;
 
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
         redirectTo,
       });
 
@@ -29,8 +46,7 @@ export default function ForgotPasswordPage() {
         if (resetError.message.toLowerCase().includes("rate limit")) {
           setError("Too many requests. Please wait a moment before trying again.");
         } else {
-          // Fallback error, avoid revealing too much info
-          setError("Unable to send the reset email. Please try again in a moment.");
+          setError(resetError.message || "Unable to send the reset email. Please try again in a moment.");
         }
         setStatus("idle");
         return;
@@ -39,7 +55,7 @@ export default function ForgotPasswordPage() {
       // Success
       setStatus("success");
     } catch (err: any) {
-      setError("An unexpected error occurred. Please try again.");
+      setError(err?.message || "An unexpected error occurred. Please try again.");
       setStatus("idle");
     }
   };
@@ -97,7 +113,7 @@ export default function ForgotPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Email Field */}
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#09090B] mb-2">
+                  <label htmlFor="forgot-email" className="block text-[13px] font-semibold text-[#09090B] mb-2">
                     Email address
                   </label>
                   <div className="relative group">
@@ -105,10 +121,14 @@ export default function ForgotPasswordPage() {
                       <Mail size={16} strokeWidth={2.5} />
                     </div>
                     <input
+                      id="forgot-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
                       placeholder="Enter your email"
                       className="w-full border border-[#E4E4E7] rounded-xl pl-10 pr-4 h-[46px] text-[14px] text-[#09090B] placeholder:text-[#A1A1AA] bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all font-medium"
                     />
@@ -118,22 +138,21 @@ export default function ForgotPasswordPage() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={status !== "idle" || !email}
+                  disabled={status === "loading"}
                   className={`w-full mt-6 rounded-xl h-[46px] text-[14px] font-semibold transition-all flex items-center justify-center gap-2 shadow-sm
                     ${status === "loading"
                       ? "bg-[#09090B] text-white opacity-70 cursor-not-allowed"
-                      : "bg-[#09090B] hover:bg-[#27272A] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      : "bg-[#09090B] hover:bg-[#27272A] text-white cursor-pointer active:scale-[0.99]"
                     }`}
                 >
-                  {status === "idle" && (
-                    <>
-                      Send reset link <ArrowRight size={16} />
-                    </>
-                  )}
-                  {status === "loading" && (
+                  {status === "loading" ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Sending...
+                    </>
+                  ) : (
+                    <>
+                      Send reset link <ArrowRight size={16} />
                     </>
                   )}
                 </button>
@@ -146,7 +165,11 @@ export default function ForgotPasswordPage() {
               </h2>
               <div className="space-y-4 text-[15px] text-[#71717A] font-medium leading-relaxed">
                 <p>
-                  If an account exists for this email address, you'll receive a password reset link shortly.
+                  If an account exists for{" "}
+                  <span className="text-[#09090B] font-semibold break-all">
+                    {submittedEmail}
+                  </span>
+                  , you'll receive a password reset link shortly.
                 </p>
                 <p>
                   Please check your inbox and follow the link to create a new password.

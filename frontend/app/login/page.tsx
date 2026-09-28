@@ -176,6 +176,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -202,6 +203,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -245,13 +247,12 @@ export default function LoginPage() {
 
             {/* Submit Button */}
             <button
-              type="button"
+              type="submit"
               disabled={status === "loading"}
-              onClick={handleSubmit}
               className={`w-full mt-6 rounded-xl h-[46px] text-[14px] font-semibold transition-all flex items-center justify-center gap-2 shadow-sm
                 ${status === "success" 
                   ? "bg-emerald-500 hover:bg-emerald-600 text-white" 
-                  : "bg-[#09090B] hover:bg-[#27272A] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  : "bg-[#09090B] hover:bg-[#27272A] text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.99]"
                 }`}
             >
               {status === "idle" && (

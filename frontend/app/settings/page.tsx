@@ -360,7 +360,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between py-1">
               <div>
                 <span className="text-[14px] font-medium text-zinc-900 block">Email verification</span>
-                <span className="text-[12px] text-text-muted">Verified via Supabase 8-digit OTP</span>
+                <span className="text-[12px] text-text-muted">Verified via Supabase 6-digit OTP</span>
               </div>
               <span className="text-[12px] font-medium text-emerald-600 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Verified
@@ -602,7 +602,7 @@ export default function SettingsPage() {
             </div>
             <div className="grid grid-cols-2 text-[13px]">
               <span className="text-text-muted">Authentication Engine</span>
-              <span className="font-medium text-zinc-900">Supabase Auth (8-digit OTP)</span>
+              <span className="font-medium text-zinc-900">Supabase Auth (6-digit OTP)</span>
             </div>
             <div className="grid grid-cols-2 text-[13px]">
               <span className="text-text-muted">System Status</span>

@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutGrid, ArrowRight, ArrowLeft, RotateCcw, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, RotateCcw, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { HelpFlowLogo } from "@/components/HelpFlowLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { AIExperiencePanel } from "@/components/auth/AIExperiencePanel";
 
-const OTP_LENGTH = 8;
+const OTP_LENGTH = 6;
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -84,7 +84,7 @@ export default function VerifyEmailPage() {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto submit if all 8 filled
+    // Auto submit if all 6 filled
     if (newOtp.every((digit) => digit !== "")) {
       handleVerify(newOtp.join(""));
     }
@@ -136,7 +136,7 @@ export default function VerifyEmailPage() {
   const handleVerify = async (tokenString?: string) => {
     const code = tokenString || otp.join("");
     if (code.length !== OTP_LENGTH) {
-      setError("Please enter the complete 8-digit verification code.");
+      setError("Please enter the complete 6-digit verification code.");
       return;
     }
 
@@ -183,6 +183,8 @@ export default function VerifyEmailPage() {
     } else {
       setResendStatus("Verification code sent.");
       setResendCooldown(60);
+      setOtp(Array(OTP_LENGTH).fill(""));
+      inputRefs.current[0]?.focus();
     }
   };
 
@@ -227,7 +229,7 @@ export default function VerifyEmailPage() {
             </h2>
             <div className="space-y-1">
               <p className="text-[14px] text-[#71717A] font-medium">
-                We sent an 8-digit verification code to
+                We sent a 6-digit verification code to
               </p>
               <p className="text-[15px] font-bold text-[#09090B] break-all select-all font-mono">
                 {email || "your email address"}
@@ -250,8 +252,8 @@ export default function VerifyEmailPage() {
           )}
 
           <div className="space-y-5">
-            {/* 8 Individual OTP Boxes */}
-            <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+            {/* 6 Individual OTP Boxes */}
+            <div className="flex items-center justify-between gap-2 sm:gap-2.5 max-w-[380px] mx-auto lg:mx-0">
               {otp.map((digit, idx) => (
                 <input
                   key={idx}
@@ -268,7 +270,7 @@ export default function VerifyEmailPage() {
                   onChange={(e) => handleChange(idx, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(idx, e)}
                   onPaste={handlePaste}
-                  className={`w-10 h-12 sm:w-[48px] sm:h-[54px] md:w-[50px] md:h-[54px] text-center text-[19px] sm:text-[21px] font-bold text-[#09090B] rounded-xl border transition-all bg-white
+                  className={`w-12 h-14 sm:w-[54px] sm:h-[58px] text-center text-[21px] sm:text-[23px] font-bold text-[#09090B] rounded-xl border transition-all bg-white
                     ${
                       digit
                         ? "border-[#09090B] ring-2 ring-black/5 bg-[#FAFAFA]"
@@ -281,7 +283,7 @@ export default function VerifyEmailPage() {
             </div>
 
             {/* Resend Code & Timer */}
-            <div className="flex items-center justify-between text-[13px] pt-0.5">
+            <div className="flex items-center justify-between text-[13px] pt-0.5 max-w-[380px] mx-auto lg:mx-0">
               <span className="text-[#71717A] font-medium">Didn&apos;t receive the code?</span>
               {resendCooldown > 0 ? (
                 <span className="text-[#A1A1AA] font-mono font-medium">
@@ -293,7 +295,7 @@ export default function VerifyEmailPage() {
                   onClick={handleResend}
                   className="text-[#09090B] font-bold hover:underline transition-all flex items-center gap-1"
                 >
-                  <RotateCcw size={13} /> Resend code
+                  <RotateCcw size={13} /> Resend
                 </button>
               )}
             </div>
