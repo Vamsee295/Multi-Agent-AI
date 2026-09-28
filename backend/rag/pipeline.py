@@ -9,7 +9,6 @@ import os
 
 from config import get_settings
 from embeddings.embedder import embed_texts, embed_query
-from vectorstore.faiss_store import get_vector_store, reset_vector_store, IndexedChunk
 from rag.chunker import chunk_text
 from agents.prompts import AGENT_DOMAIN_HINTS
 
@@ -72,16 +71,37 @@ def _save_manifest(file_hashes: dict[str, str], chunk_count: int) -> None:
         json.dump({"files": file_hashes, "chunk_count": chunk_count}, f)
 
 
+def get_indexed_chunks_count() -> int:
+    """Read the chunk count from the manifest/meta files without loading FAISS or PyTorch into RAM."""
+    manifest = _load_manifest()
+    if manifest and "chunk_count" in manifest:
+        return manifest["chunk_count"]
+    settings = get_settings()
+    meta_path = f"{settings.VECTOR_STORE_PATH}.meta.json"
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, encoding="utf-8") as f:
+                chunks = json.load(f)
+                return len(chunks)
+        except Exception:
+            pass
+    return 0
+
+
 def _index_is_current(file_hashes: dict[str, str]) -> bool:
+    """Verify if the on-disk index is current without initializing FAISS."""
     manifest = _load_manifest()
     if not manifest:
         return False
-    store = get_vector_store()
-    return (
-        manifest.get("files") == file_hashes
-        and store.index.ntotal == manifest.get("chunk_count", 0)
-        and store.index.ntotal > 0
-    )
+    if manifest.get("files") != file_hashes:
+        return False
+    expected_count = manifest.get("chunk_count", 0)
+    if expected_count <= 0:
+        return False
+    settings = get_settings()
+    faiss_file = f"{settings.VECTOR_STORE_PATH}.faiss"
+    meta_file = f"{settings.VECTOR_STORE_PATH}.meta.json"
+    return os.path.exists(faiss_file) and os.path.exists(meta_file)
 
 
 def ingest_knowledge_base() -> int:
@@ -101,7 +121,10 @@ def ingest_knowledge_base() -> int:
 
     file_hashes = _kb_file_hashes(paths)
     if _index_is_current(file_hashes):
-        return get_vector_store().index.ntotal
+        return get_indexed_chunks_count()
+
+    from vectorstore.faiss_store import reset_vector_store, IndexedChunk
+    from embeddings.embedder import embed_texts
 
     store = reset_vector_store()
 
@@ -151,6 +174,9 @@ def retrieve(
     agent: str | None = None,
     preferred_sources: list[str] | None = None,
 ) -> list[dict]:
+    from embeddings.embedder import embed_query
+    from vectorstore.faiss_store import get_vector_store
+
     settings = get_settings()
     store = get_vector_store()
     k = top_k or settings.RETRIEVAL_TOP_K

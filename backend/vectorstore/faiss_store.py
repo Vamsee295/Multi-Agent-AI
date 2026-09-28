@@ -5,11 +5,13 @@ Uses inner-product search on normalized vectors (== cosine similarity).
 import json
 import os
 from dataclasses import dataclass, asdict
-
-import faiss
-import numpy as np
+from typing import TYPE_CHECKING
 
 from config import get_settings
+
+if TYPE_CHECKING:
+    import faiss
+    import numpy as np
 
 
 @dataclass
@@ -20,6 +22,7 @@ class IndexedChunk:
 
 class FaissVectorStore:
     def __init__(self, dim: int, path: str):
+        import faiss
         self.dim = dim
         self.path = path
         self.index = faiss.IndexFlatIP(dim)
@@ -27,15 +30,17 @@ class FaissVectorStore:
 
     def reset(self) -> None:
         """Drop all vectors and metadata from the in-memory store."""
+        import faiss
         self.index = faiss.IndexFlatIP(self.dim)
         self.chunks = []
 
-    def add(self, vectors: np.ndarray, chunks: list[IndexedChunk]) -> None:
+    def add(self, vectors, chunks: list[IndexedChunk]) -> None:
         assert vectors.shape[0] == len(chunks)
         self.index.add(vectors)
         self.chunks.extend(chunks)
 
-    def search(self, query_vector: np.ndarray, top_k: int = 4) -> list[tuple[IndexedChunk, float]]:
+    def search(self, query_vector, top_k: int = 4) -> list[tuple[IndexedChunk, float]]:
+        import numpy as np
         if self.index.ntotal == 0:
             return []
         scores, indices = self.index.search(np.expand_dims(query_vector, axis=0), top_k)
@@ -47,6 +52,7 @@ class FaissVectorStore:
         return results
 
     def save(self) -> None:
+        import faiss
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         faiss.write_index(self.index, f"{self.path}.faiss")
         with open(f"{self.path}.meta.json", "w") as f:
@@ -54,6 +60,7 @@ class FaissVectorStore:
 
     @classmethod
     def load(cls, dim: int, path: str) -> "FaissVectorStore":
+        import faiss
         store = cls(dim, path)
         if os.path.exists(f"{path}.faiss") and os.path.exists(f"{path}.meta.json"):
             store.index = faiss.read_index(f"{path}.faiss")

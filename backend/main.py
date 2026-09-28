@@ -18,16 +18,13 @@ from api.chat import router as chat_router
 from api.analytics import router as analytics_router
 from api.tickets import router as tickets_router
 from api.kb import router as kb_router
-from rag.pipeline import ingest_knowledge_base
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup: ensure database indexes if database is reachable
     if await ping():
         await ensure_indexes()
-    chunks_indexed = ingest_knowledge_base()
-    app.state.chunks_indexed = chunks_indexed
     yield
     # Shutdown (nothing to clean up currently)
 
@@ -79,12 +76,21 @@ async def health():
 
     is_healthy = db_ok or (settings.ENV != "production")
 
+    chunks_count = getattr(app.state, "chunks_indexed", None)
+    if chunks_count is None:
+        try:
+            from rag.pipeline import get_indexed_chunks_count
+            chunks_count = get_indexed_chunks_count()
+        except Exception:
+            chunks_count = 0
+        app.state.chunks_indexed = chunks_count
+
     return {
         "status": "ok" if is_healthy else "degraded",
         "database_connected": db_ok,
         "database_storage": "mongodb" if db_ok else ("mock_db_store" if settings.ENV != "production" else "disconnected"),
         "environment": settings.ENV,
-        "knowledge_base_chunks_indexed": getattr(app.state, "chunks_indexed", 0),
+        "knowledge_base_chunks_indexed": chunks_count,
         "llm_provider": settings.LLM_PROVIDER,
         "llm_model": llm_model,
         "version": "2.0.0",
